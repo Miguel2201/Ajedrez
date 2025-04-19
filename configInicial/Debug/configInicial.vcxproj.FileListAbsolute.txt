@@ -1,0 +1,4 @@
+C:\Users\CGIH12\Desktop\configInicial\configInicial\Debug\configInicial.exe
+C:\configInicial-3\configInicial\Debug\configInicial.exe
+C:\CGIH_P\configInicial\Debug\configInicial.exe
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Debug\configInicial.exe

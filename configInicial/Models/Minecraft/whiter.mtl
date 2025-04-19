@@ -1,0 +1,19 @@
+# Blender 4.4.0 MTL File: 'None'
+# www.blender.org
+
+newmtl Wither
+	Kd 1.0000 1.0000 1.0000
+	Ks 0.2000 0.2000 0.2000
+	Tr 1.0000
+	d 0.0000
+	Tf 0.0000 0.0000 0.0000
+	Pr 0.8000
+	Pm 0.0000
+	Pc 0.0000
+	Pcr 0.0000
+	Ni 1.5000
+	Ke 0.0000 0.0000 0.0000
+	illum 2
+	map_Kd whiter.png
+	
+	map_d wither_opacity.png
