@@ -1,5 +1,6 @@
-#include <iostream>
+ï»¿#include <iostream>
 #include <cmath>
+#include <vector>
 
 // GLEW
 #include <GL/glew.h>
@@ -18,20 +19,14 @@
 //Load Models
 #include "SOIL2/SOIL2.h"
 
-
 // Other includes
 #include "Shader.h"
 #include "Camera.h"
 #include "Model.h"
 
-//Estructura de Piezas
-// --- Añadido para Lógica de Ajedrez ---
-
-#include <vector> // Necesario para std::vector
-#include <map>   // Necesario para std::map (opcional pero útil)
-
-//Para los movimientos del ajedrez
-#include <cmath> // Necesario para std::abs
+// Estructura de Piezas
+#include <vector>
+#include <map>
 
 // Tipos de Pieza
 enum PieceType { EMPTY, PAWN, ROOK, KNIGHT, BISHOP, QUEEN, KING };
@@ -42,36 +37,47 @@ enum PieceColor { NONE, WHITE, BLACK };
 struct ChessPiece {
 	PieceType type = EMPTY;
 	PieceColor color = NONE;
-	Model* model = nullptr; // Puntero al modelo 3D asociado
-	int row = -1;           // Fila actual en el tablero (0-7)
-	int col = -1;           // Columna actual en el tablero (0-7)
-	glm::vec3 positionOffset = glm::vec3(0.0f); // Ajuste fino de posición si es necesario
-	glm::vec3 scale = glm::vec3(1.0f);         // Escala específica de la pieza
-	float rotationY = 1.0f; // Rotación específica si es necesaria
-	bool isSelected = false; // Nuevo campo para indicar si está seleccionada
+	Model* model = nullptr;
+	int row = -1;
+	int col = -1;
+	glm::vec3 positionOffset = glm::vec3(0.0f);
+	glm::vec3 scale = glm::vec3(1.0f);
+	float rotationY = 1.0f;
+	bool isSelected = false;
 };
 
-// Representación del tablero (8x8)
+// RepresentaciÃ³n del tablero (8x8)
 ChessPiece board[8][8];
 
-// Variables para manejar la selección y movimiento
-ChessPiece* selectedPiece = nullptr; // Puntero a la pieza seleccionada
+// Listas para piezas capturadas
+std::vector<ChessPiece> whiteCapturedPieces;
+std::vector<ChessPiece> blackCapturedPieces;
+
+// Variables para manejar la selecciÃ³n y movimiento
+ChessPiece* selectedPiece = nullptr;
 int selectedRow = -1;
 int selectedCol = -1;
-PieceColor currentPlayer = WHITE; // Empieza el blanco
+PieceColor currentPlayer = WHITE;
 
-// Dimensiones y posición del tablero en el mundo 3D (¡AJUSTA ESTOS VALORES!)
-// Necesitas saber dónde está la esquina (0,0) de tu tablero y el tamaño de cada casilla
-const float TILE_SIZE = 5.0f;   // Ancho/Profundidad de una casilla (Ajusta según tu modelo 'Piso') 4.75
-const float BOARD_OFFSET_X = -20.25f; // Posición X de la esquina A1 (col 0)
-const float BOARD_OFFSET_Z = 1.0f;    // Posición Z de la esquina A1 (row 0)
-const float PIECE_Y_OFFSET = -2.0f;   // Altura Y base donde se colocan las piezas
+// Dimensiones y posiciÃ³n del tablero
+const float TILE_SIZE = 5.0f;
+const float BOARD_OFFSET_X = -20.25f;
+const float BOARD_OFFSET_Z = 1.0f;
+const float PIECE_Y_OFFSET = -2.0f;
 
-// --- Fin de Añadido para Lógica de Ajedrez ---
+// Posiciones para piezas capturadas
+const float CAPTURED_WHITE_X = BOARD_OFFSET_X - TILE_SIZE * 2.0f;
+const float CAPTURED_BLACK_X = BOARD_OFFSET_X + TILE_SIZE * 10.0f;
+const float CAPTURED_Y = PIECE_Y_OFFSET;
+const float CAPTURED_Z_START = BOARD_OFFSET_Z;
+
+// Contadores para piezas capturadas
+int whiteCapturedCount = 0;
+int blackCapturedCount = 0;
 
 // Function prototypes
-void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mode);
-void MouseCallback(GLFWwindow *window, double xPos, double yPos);
+void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode);
+void MouseCallback(GLFWwindow* window, double xPos, double yPos);
 void DoMovement();
 void InitializeBoard(
 	Model* pPeonW, Model* pTorreW, Model* pCaballoW, Model* pAlfilW, Model* pReinaW, Model* pReyW,
@@ -80,27 +86,27 @@ void InitializeBoard(
 glm::vec3 GetWorldCoordinates(int row, int col);
 bool IsPathClear(int startRow, int startCol, int endRow, int endCol);
 bool IsValidMove(ChessPiece* piece, int targetRow, int targetCol);
-bool WorldToBoardCoordinates(const glm::vec3& worldPos, int& row, int& col); // Asumo que esta también existe
+bool WorldToBoardCoordinates(const glm::vec3& worldPos, int& row, int& col);
 glm::vec3 CalculateMouseRay(GLFWwindow* window, double xpos, double ypos, const Camera& cam, const glm::mat4& projectionMatrix);
 float RayPlaneIntersection(const glm::vec3& rayOrigin, const glm::vec3& rayDirection, const glm::vec3& planePoint, const glm::vec3& planeNormal);
 glm::vec3 GetBoardIntersectionPoint(GLFWwindow* window, double xpos, double ypos, const Camera& cam);
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
+void MoveCapturedPiece(ChessPiece& piece);
 
 // Window dimensions
 const GLuint WIDTH = 1200, HEIGHT = 1000;
 int SCREEN_WIDTH, SCREEN_HEIGHT;
 
 // Camera
-Camera  camera(glm::vec3(0.0f, 0.0f, 15.0f));
+Camera  camera(glm::vec3(0.0f, 12.0f, 35.0f));
 GLfloat lastX = WIDTH / 2.0;
 GLfloat lastY = HEIGHT / 2.0;
 bool keys[1024];
 bool firstMouse = true;
-// Light attributes
 glm::vec3 lightPos(0.0f, 0.0f, 0.0f);
 bool active;
 
-// Positions of the point lights  //**arrglo de de las luces en el origen
+// Positions of the point lights
 glm::vec3 pointLightPositions[] = {
 	glm::vec3(-2.0f,0.0f, -2.0f),
 	glm::vec3(2.0f,0.0f, 2.0f),
@@ -109,119 +115,94 @@ glm::vec3 pointLightPositions[] = {
 };
 
 float vertices[] = {
-	 -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-	   -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-	   -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+	-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+	 0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+	 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+	 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+	-0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+	-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
 
-	   -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-	   -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-	   -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+	-0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+	 0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+	 0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+	 0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+	-0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+	-0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
 
-	   -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-	   -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-	   -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-	   -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-	   -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-	   -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+	-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+	-0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+	-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+	-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+	-0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+	-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
 
-		0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-		0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-		0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-		0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-		0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-		0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+	 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+	 0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+	 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+	 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+	 0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+	 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
 
-	   -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-		0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-		0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-		0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-	   -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-	   -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+	-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+	 0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+	 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+	 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+	-0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+	-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
 
-	   -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-		0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-		0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-		0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-	   -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-	   -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
+	-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+	 0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+	 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+	 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+	-0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+	-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
 };
-
-
 
 glm::vec3 Light1 = glm::vec3(0);
 
-
-// Deltatime
-GLfloat deltaTime = 0.0f;	// Time between current frame and last frame
-GLfloat lastFrame = 0.0f;  	// Time of last frame
+GLfloat deltaTime = 0.0f;
+GLfloat lastFrame = 0.0f;
 
 int main()
 {
-	// Init GLFW
 	glfwInit();
-	// Set all the required options for GLFW
-	/*glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);*/
-
-	// Create a GLFWwindow object that we can use for GLFW's functions
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Fuentes de luz", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Ajedrez 3D", nullptr, nullptr);
 
 	if (nullptr == window)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
 		glfwTerminate();
-
 		return EXIT_FAILURE;
 	}
 
 	glfwMakeContextCurrent(window);
-
 	glfwGetFramebufferSize(window, &SCREEN_WIDTH, &SCREEN_HEIGHT);
-
-	// Set the required callback functions
 	glfwSetKeyCallback(window, KeyCallback);
 	glfwSetCursorPosCallback(window, MouseCallback);
+	glfwSetMouseButtonCallback(window, MouseButtonCallback);
 
-	// GLFW Options
-	//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
-	// Set this to true so GLEW knows to use a modern approach to retrieving function pointers and extensions
 	glewExperimental = GL_TRUE;
-	// Initialize GLEW to setup the OpenGL Function pointers
 	if (GLEW_OK != glewInit())
 	{
 		std::cout << "Failed to initialize GLEW" << std::endl;
 		return EXIT_FAILURE;
 	}
 
-	// Define the viewport dimensions
 	glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-
-
-	Shader lightingShader("Shader/lighting.vs", "Shader/lighting.frag");  //**shaders
+	Shader lightingShader("Shader/lighting.vs", "Shader/lighting.frag");
 	Shader lampShader("Shader/lamp.vs", "Shader/lamp.frag");
-	
-	//Carga de modelos
+
+	// Carga de modelos
 	Model Piso((char*)"Models/Minecraft/Tablero2.obj");
-	//Overworld
+	// Overworld
 	Model steve((char*)"Models/Minecraft/steve.obj");
 	Model alex((char*)"Models/Minecraft/alex.obj");
 	Model golem((char*)"Models/Minecraft/golem.obj");
 	Model caballo((char*)"Models/Minecraft/caballo.obj");
 	Model perro((char*)"Models/Minecraft/perro.obj");
 	Model pollo((char*)"Models/Minecraft/pollo.obj");
-
-	//Nether
+	// Nether
 	Model warden((char*)"Models/Minecraft/warden.obj");
 	Model dragon((char*)"Models/Minecraft/dragon.obj");
 	Model piglin((char*)"Models/Minecraft/piglin.obj");
@@ -229,100 +210,69 @@ int main()
 	Model enderman((char*)"Models/Minecraft/enderman.obj");
 	Model esqueleto((char*)"Models/Minecraft/esqueleto.obj");
 
-	// --- Llamando a la funcion para inicializar el tablero
 	InitializeBoard(
-		&pollo, &golem, &caballo, &perro, &alex, &steve, // Modelos Blancos (Peón a Rey)
-		&esqueleto, &piglin, &blaze, &enderman, &dragon, &warden // Modelos Negros (Peón a Rey)
+		&pollo, &golem, &caballo, &perro, &alex, &steve,
+		&esqueleto, &piglin, &blaze, &enderman, &dragon, &warden
 	);
 
-	// First, set the container's VAO (and VBO)
 	GLuint VBO, VAO;
 	glGenVertexArrays(1, &VAO);
 	glGenBuffers(1, &VBO);
 	glBindVertexArray(VAO);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-	// Position attribute
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
-	// normal attribute
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
 
-	// Set texture units
 	lightingShader.Use();
 	glUniform1i(glGetUniformLocation(lightingShader.Program, "Material.difuse"), 0);
 	glUniform1i(glGetUniformLocation(lightingShader.Program, "Material.specular"), 1);
 
 	glm::mat4 projection = glm::perspective(camera.GetZoom(), (GLfloat)SCREEN_WIDTH / (GLfloat)SCREEN_HEIGHT, 0.1f, 100.0f);
 
-	// --- Añadido: Registrar callback del botón del mouse ---
-	void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods); // Declaración adelantada
-	glfwSetMouseButtonCallback(window, MouseButtonCallback);
-	// --- Fin de Añadido ---
-
-	// Game loop
 	while (!glfwWindowShouldClose(window))
 	{
-
-		// Calculate deltatime of current frame
 		GLfloat currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
 
-		// Check if any events have been activiated (key pressed, mouse moved etc.) and call corresponding response functions
 		glfwPollEvents();
 		DoMovement();
 
-		// Clear the colorbuffer
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	   
-		// OpenGL options
 		glEnable(GL_DEPTH_TEST);
 
-		
-		
-		//Load Model
-	
-
-		// Use cooresponding shader when setting uniforms/drawing objects
 		lightingShader.Use();
-
-        glUniform1i(glGetUniformLocation(lightingShader.Program, "diffuse"), 0);
-		//glUniform1i(glGetUniformLocation(lightingShader.Program, "specular"),1);
+		glUniform1i(glGetUniformLocation(lightingShader.Program, "diffuse"), 0);
 
 		GLint viewPosLoc = glGetUniformLocation(lightingShader.Program, "viewPos");
 		glUniform3f(viewPosLoc, camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z);
 
-
-		// Directional light  //**direccion 
+		// Directional light
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.direction"), -0.2f, -1.0f, -0.3f);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.ambient"),0.8f,0.8f,0.8f);
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.ambient"), 0.8f, 0.8f, 0.8f);
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.diffuse"), 0.5f, 0.5f, 0.5f);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.specular"),0.0f, 0.0f, 0.0f);
-
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.specular"), 0.0f, 0.0f, 0.0f);
 
 		// Point light 1
-	    glm::vec3 lightColor;
-		lightColor.x= abs(sin(glfwGetTime() *Light1.x));
-		lightColor.y= abs(sin(glfwGetTime() *Light1.y));
-		lightColor.z= sin(glfwGetTime() *Light1.z);
+		glm::vec3 lightColor;
+		lightColor.x = abs(sin(glfwGetTime() * Light1.x));
+		lightColor.y = abs(sin(glfwGetTime() * Light1.y));
+		lightColor.z = sin(glfwGetTime() * Light1.z);
 
-		
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[0].position"), pointLightPositions[0].x, pointLightPositions[0].y, pointLightPositions[0].z);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[0].ambient"), lightColor.x,lightColor.y, lightColor.z);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[0].diffuse"), lightColor.x,lightColor.y,lightColor.z);
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[0].ambient"), lightColor.x, lightColor.y, lightColor.z);
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[0].diffuse"), lightColor.x, lightColor.y, lightColor.z);
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[0].specular"), 0.0f, 0.0f, 0.0f);
 		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[0].constant"), 1.0f);
 		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[0].linear"), 0.045f);
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[0].quadratic"),0.075f);
-
-
+		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[0].quadratic"), 0.075f);
 
 		// Point light 2
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[1].position"), pointLightPositions[1].x, pointLightPositions[1].y, pointLightPositions[1].z);
-		
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[1].ambient"), 0.05f, 0.05f, 0.05f);
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[1].diffuse"), 0.0f, 0.05f, 0.0f);
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[1].specular"), 0.0f, 0.0f, 0.0f);
@@ -332,7 +282,6 @@ int main()
 
 		// Point light 3
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[2].position"), pointLightPositions[2].x, pointLightPositions[2].y, pointLightPositions[2].z);
-
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[2].ambient"), 0.0f, 0.0f, 0.0f);
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[2].diffuse"), 0.0f, 0.0f, 0.0f);
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[2].specular"), 0.0f, 0.0f, 0.0f);
@@ -342,7 +291,6 @@ int main()
 
 		// Point light 4
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[3].position"), pointLightPositions[3].x, pointLightPositions[3].y, pointLightPositions[3].z);
-
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[3].ambient"), 0.10f, 0.0f, 0.10f);
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[3].diffuse"), 0.10f, 0.0f, 0.10f);
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[3].specular"), 0.0f, 0.0f, 0.0f);
@@ -350,13 +298,12 @@ int main()
 		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[3].linear"), 0.0f);
 		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[3].quadratic"), 0.0f);
 
-		// SpotLight  //**se mueve por la camara 
+		// SpotLight
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.position"), camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z);
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.direction"), camera.GetFront().x, camera.GetFront().y, camera.GetFront().z);
-		
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.ambient"), 0.0f, 0.0f, 0.0f);
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.diffuse"), 0.0f, 0.0f, 0.0f);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.specular"),0.0f, 0.0f, 0.0f);
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.specular"), 0.0f, 0.0f, 0.0f);
 		glUniform1f(glGetUniformLocation(lightingShader.Program, "spotLight.constant"), 1.0f);
 		glUniform1f(glGetUniformLocation(lightingShader.Program, "spotLight.linear"), 0.0f);
 		glUniform1f(glGetUniformLocation(lightingShader.Program, "spotLight.quadratic"), 0.0f);
@@ -366,32 +313,23 @@ int main()
 		// Set material properties
 		glUniform1f(glGetUniformLocation(lightingShader.Program, "material.shininess"), 16.0f);
 
-		// Create camera transformations
-		glm::mat4 view;
-		view = camera.GetViewMatrix();
-
-		// Get the uniform locations
+		glm::mat4 view = camera.GetViewMatrix();
 		GLint modelLoc = glGetUniformLocation(lightingShader.Program, "model");
 		GLint viewLoc = glGetUniformLocation(lightingShader.Program, "view");
 		GLint projLoc = glGetUniformLocation(lightingShader.Program, "projection");
 
-		// Pass the matrices to the shader
 		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 		glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
-
-		// --- REEMPLAZADO: Dibujar el tablero y las piezas desde la estructura 'board' ---
-		// Dibujar el tablero (Piso)
+		// Dibujar el tablero
 		glm::mat4 model = glm::mat4(1.0f);
-		// Si tu tablero no está en el origen, aplica la misma transformación que antes
-	   // model = glm::translate(model, glm::vec3(offsetX, offsetY, offsetZ));
-		model = glm::scale(model, glm::vec3(82.0f, 1.0f, 84.0f)); // Ajusta la escala si es necesario
-		model = glm::translate(model, glm::vec3(0.0f,-3.75f,0.25f));
+		model = glm::scale(model, glm::vec3(82.0f, 1.0f, 84.0f));
+		model = glm::translate(model, glm::vec3(0.0f, -3.75f, 0.25f));
 		model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 		Piso.Draw(lightingShader);
 
-		// Dibujar las piezas
+		// Dibujar las piezas en el tablero
 		for (int r = 0; r < 8; ++r) {
 			for (int c = 0; c < 8; ++c) {
 				ChessPiece& piece = board[r][c];
@@ -406,9 +344,8 @@ int main()
 					}
 					model = glm::scale(model, piece.scale);
 
-					// Aplicar resaltado si la pieza está seleccionada
 					if (piece.isSelected) {
-						glm::vec3 highlightColor = glm::vec3(1.0f, 1.0f, 0.0f); // Amarillo para resaltar
+						glm::vec3 highlightColor = glm::vec3(1.0f, 1.0f, 0.0f);
 						glUniform3f(glGetUniformLocation(lightingShader.Program, "highlightColor"), highlightColor.x, highlightColor.y, highlightColor.z);
 					}
 					else {
@@ -421,49 +358,151 @@ int main()
 			}
 		}
 
+		// Dibujar piezas capturadas blancas
+		for (size_t i = 0; i < whiteCapturedPieces.size(); i++) {
+			ChessPiece& piece = whiteCapturedPieces[i];
+			if (piece.model != nullptr) {
+				glm::mat4 model = glm::mat4(1.0f);
+				float worldX = CAPTURED_WHITE_X;
+				float worldZ = CAPTURED_Z_START + i * TILE_SIZE * 0.5f;
+				model = glm::translate(model, glm::vec3(worldX, CAPTURED_Y, worldZ));
+				if (piece.rotationY != 0.0f) {
+					model = glm::rotate(model, piece.rotationY, glm::vec3(0.0f, 1.0f, 0.0f));
+				}
+				model = glm::scale(model, piece.scale);
+				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+				piece.model->Draw(lightingShader);
+			}
+		}
 
-		// Also draw the lamp object, again binding the appropriate shader
+		// Dibujar piezas capturadas negras
+		for (size_t i = 0; i < blackCapturedPieces.size(); i++) {
+			ChessPiece& piece = blackCapturedPieces[i];
+			if (piece.model != nullptr) {
+				glm::mat4 model = glm::mat4(1.0f);
+				float worldX = CAPTURED_BLACK_X;
+				float worldZ = CAPTURED_Z_START + i * TILE_SIZE * 0.5f;
+				model = glm::translate(model, glm::vec3(worldX, CAPTURED_Y, worldZ));
+				if (piece.rotationY != 0.0f) {
+					model = glm::rotate(model, piece.rotationY, glm::vec3(0.0f, 1.0f, 0.0f));
+				}
+				model = glm::scale(model, piece.scale);
+				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+				piece.model->Draw(lightingShader);
+			}
+		}
+
+		// Dibujar las luces
 		lampShader.Use();
-		// Get location objects for the matrices on the lamp shader (these could be different on a different shader)
 		modelLoc = glGetUniformLocation(lampShader.Program, "model");
 		viewLoc = glGetUniformLocation(lampShader.Program, "view");
 		projLoc = glGetUniformLocation(lampShader.Program, "projection");
 
-		// Set matrices
 		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 		glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
-		model = glm::mat4(1);
-		model = glm::translate(model, lightPos);
-		model = glm::scale(model, glm::vec3(0.2f)); // Make it a smaller cube
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-		// Draw the light object (using light's vertex attributes)
-		for (GLuint i = 0; i < 4; i++)
-		{
+
+		for (GLuint i = 0; i < 4; i++) {
 			model = glm::mat4(1);
 			model = glm::translate(model, pointLightPositions[i]);
-			model = glm::scale(model, glm::vec3(0.2f)); // Make it a smaller cube
+			model = glm::scale(model, glm::vec3(0.2f));
 			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 			glBindVertexArray(VAO);
 			glDrawArrays(GL_TRIANGLES, 0, 36);
 		}
 		glBindVertexArray(0);
 
-
-
-		// Swap the screen buffers
 		glfwSwapBuffers(window);
 	}
 
-
-	// Terminate GLFW, clearing any resources allocated by GLFW.
 	glfwTerminate();
-
-
-
 	return 0;
-	
-
 }
+
+void MoveCapturedPiece(ChessPiece& piece) {
+	if (piece.color == WHITE) {
+		whiteCapturedPieces.push_back(piece);
+		whiteCapturedCount++;
+	}
+	else {
+		blackCapturedPieces.push_back(piece);
+		blackCapturedCount++;
+	}
+	// Marcar la pieza como capturada
+	piece.type = EMPTY;
+	piece.color = NONE;
+	piece.model = nullptr;
+}
+
+void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+		double xpos, ypos;
+		glfwGetCursorPos(window, &xpos, &ypos);
+
+		glm::vec3 intersectionPoint = GetBoardIntersectionPoint(window, xpos, ypos, camera);
+
+		if (intersectionPoint.y > -900.0f) {
+			int targetRow, targetCol;
+			if (WorldToBoardCoordinates(intersectionPoint, targetRow, targetCol)) {
+				ChessPiece& clickedPiece = board[targetRow][targetCol];
+
+				if (selectedPiece == nullptr) {
+					if (clickedPiece.type != EMPTY && clickedPiece.color == currentPlayer) {
+						clickedPiece.isSelected = true;
+						selectedPiece = &clickedPiece;
+						selectedRow = targetRow;
+						selectedCol = targetCol;
+					}
+				}
+				else {
+					if (IsValidMove(selectedPiece, targetRow, targetCol)) {
+						selectedPiece->isSelected = false;
+						ChessPiece& targetSquare = board[targetRow][targetCol];
+
+						// Captura de pieza
+						if (targetSquare.type != EMPTY) {
+							MoveCapturedPiece(targetSquare);
+						}
+
+						// Mover la pieza
+						targetSquare = *selectedPiece;
+						targetSquare.row = targetRow;
+						targetSquare.col = targetCol;
+
+						// Vaciar la casilla original
+						board[selectedRow][selectedCol] = ChessPiece();
+						board[selectedRow][selectedCol].row = selectedRow;
+						board[selectedRow][selectedCol].col = selectedCol;
+
+						// Cambiar turno
+						currentPlayer = (currentPlayer == WHITE) ? BLACK : WHITE;
+
+						// Deseleccionar
+						selectedPiece = nullptr;
+						selectedRow = -1;
+						selectedCol = -1;
+					}
+					else {
+						if (board[targetRow][targetCol].type != EMPTY &&
+							board[targetRow][targetCol].color == currentPlayer) {
+							selectedPiece->isSelected = false;
+							selectedPiece = &board[targetRow][targetCol];
+							selectedPiece->isSelected = true;
+							selectedRow = targetRow;
+							selectedCol = targetCol;
+						}
+						else {
+							selectedPiece->isSelected = false;
+							selectedPiece = nullptr;
+							selectedRow = -1;
+							selectedCol = -1;
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 
 // Moves/alters the camera positions based on user input
 void DoMovement()
@@ -523,11 +562,11 @@ void DoMovement()
 	{
 		pointLightPositions[0].z += 0.01f;
 	}
-	
+
 }
 
 // Is called whenever a key is pressed/released via GLFW
-void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mode)
+void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
 	if (GLFW_KEY_ESCAPE == key && GLFW_PRESS == action)
 	{
@@ -560,7 +599,7 @@ void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mode
 	}
 }
 
-void MouseCallback(GLFWwindow *window, double xPos, double yPos)
+void MouseCallback(GLFWwindow* window, double xPos, double yPos)
 {
 	if (firstMouse)
 	{
@@ -579,26 +618,26 @@ void MouseCallback(GLFWwindow *window, double xPos, double yPos)
 }
 
 
-// --- Añadido: Función auxiliar para verificar caminos ---
-// Verifica si el camino entre (startRow, startCol) y (endRow, endCol) está vacío.
-// ¡NO verifica la validez del movimiento en sí (horizontal, vertical, diagonal)!
-// Asume que el movimiento es en línea recta (horizontal, vertical o diagonal perfecta).
+// --- Aï¿½adido: Funciï¿½n auxiliar para verificar caminos ---
+// Verifica si el camino entre (startRow, startCol) y (endRow, endCol) estï¿½ vacï¿½o.
+// ï¿½NO verifica la validez del movimiento en sï¿½ (horizontal, vertical, diagonal)!
+// Asume que el movimiento es en lï¿½nea recta (horizontal, vertical o diagonal perfecta).
 // No chequea la casilla final (endRow, endCol), solo las intermedias.
 bool IsPathClear(int startRow, int startCol, int endRow, int endCol) {
-	// Determinar la dirección del movimiento (paso en x, paso en y)
+	// Determinar la direcciï¿½n del movimiento (paso en x, paso en y)
 	int stepY = (endRow > startRow) ? 1 : ((endRow < startRow) ? -1 : 0);
 	int stepX = (endCol > startCol) ? 1 : ((endCol < startCol) ? -1 : 0);
 
-	// Casilla actual empieza una después del inicio
+	// Casilla actual empieza una despuï¿½s del inicio
 	int currentRow = startRow + stepY;
 	int currentCol = startCol + stepX;
 
 	// Recorrer el camino hasta llegar a la casilla final
 	while (currentRow != endRow || currentCol != endCol) {
-		// Si alguna casilla intermedia no está vacía, el camino está bloqueado
+		// Si alguna casilla intermedia no estï¿½ vacï¿½a, el camino estï¿½ bloqueado
 		if (currentRow < 0 || currentRow >= 8 || currentCol < 0 || currentCol >= 8) {
-			// Seguridad: Si por algún error el cálculo sale del tablero
-			std::cerr << "Error en IsPathClear: fuera de límites (" << currentRow << "," << currentCol << ")" << std::endl;
+			// Seguridad: Si por algï¿½n error el cï¿½lculo sale del tablero
+			std::cerr << "Error en IsPathClear: fuera de lï¿½mites (" << currentRow << "," << currentCol << ")" << std::endl;
 			return false;
 		}
 		if (board[currentRow][currentCol].type != EMPTY) {
@@ -609,20 +648,20 @@ bool IsPathClear(int startRow, int startCol, int endRow, int endCol) {
 		currentCol += stepX;
 	}
 
-	// Si el bucle termina, significa que todas las casillas intermedias estaban vacías
+	// Si el bucle termina, significa que todas las casillas intermedias estaban vacï¿½as
 	return true; // Camino despejado
 }
-// --- Fin de Añadido ---
+// --- Fin de Aï¿½adido ---
 
-// --- ACTUALIZADA: Validación de Movimientos de Ajedrez (Reglas Básicas) ---
+// --- ACTUALIZADA: Validaciï¿½n de Movimientos de Ajedrez (Reglas Bï¿½sicas) ---
 bool IsValidMove(ChessPiece* piece, int targetRow, int targetCol) {
-	// 1. Chequeos Iniciales Básicos
+	// 1. Chequeos Iniciales Bï¿½sicos
 	if (!piece || piece->type == EMPTY) {
-		std::cerr << "Error IsValidMove: Pieza inválida o vacía." << std::endl;
+		std::cerr << "Error IsValidMove: Pieza invï¿½lida o vacï¿½a." << std::endl;
 		return false;
 	}
 	if (targetRow < 0 || targetRow >= 8 || targetCol < 0 || targetCol >= 8) {
-		// std::cout << "Movimiento inválido: Fuera del tablero." << std::endl; // Mucho spam
+		// std::cout << "Movimiento invï¿½lido: Fuera del tablero." << std::endl; // Mucho spam
 		return false; // Fuera del tablero
 	}
 
@@ -637,22 +676,22 @@ bool IsValidMove(ChessPiece* piece, int targetRow, int targetCol) {
 
 	// No puedes capturar una pieza de tu propio color
 	if (targetSquare.type != EMPTY && targetSquare.color == piece->color) {
-		// std::cout << "Movimiento inválido: No puedes capturar tu propia pieza." << std::endl;
+		// std::cout << "Movimiento invï¿½lido: No puedes capturar tu propia pieza." << std::endl;
 		return false;
 	}
 
-	// 2. Lógica Específica por Tipo de Pieza
+	// 2. Lï¿½gica Especï¿½fica por Tipo de Pieza
 	switch (piece->type) {
 	case PAWN: {
-		int forward = (piece->color == WHITE) ? 1 : -1; // Dirección de avance
+		int forward = (piece->color == WHITE) ? 1 : -1; // Direcciï¿½n de avance
 		// Mover 1 casilla adelante
 		if (targetCol == startCol && targetRow == startRow + forward && targetSquare.type == EMPTY) {
 			return true;
 		}
-		// Mover 2 casillas adelante (solo desde posición inicial)
+		// Mover 2 casillas adelante (solo desde posiciï¿½n inicial)
 		bool isStartingRow = (piece->color == WHITE && startRow == 1) || (piece->color == BLACK && startRow == 6);
 		if (isStartingRow && targetCol == startCol && targetRow == startRow + 2 * forward && targetSquare.type == EMPTY) {
-			// Verificar que la casilla intermedia también esté vacía
+			// Verificar que la casilla intermedia tambiï¿½n estï¿½ vacï¿½a
 			if (board[startRow + forward][startCol].type == EMPTY) {
 				return true;
 			}
@@ -661,8 +700,8 @@ bool IsValidMove(ChessPiece* piece, int targetRow, int targetCol) {
 		if (std::abs(targetCol - startCol) == 1 && targetRow == startRow + forward && targetSquare.type != EMPTY && targetSquare.color != piece->color) {
 			return true;
 		}
-		// Faltan: En Passant, Promoción
-		return false; // Si no es ninguno de los anteriores, es inválido para el peón
+		// Faltan: En Passant, Promociï¿½n
+		return false; // Si no es ninguno de los anteriores, es invï¿½lido para el peï¿½n
 	}
 
 	case ROOK: {
@@ -670,14 +709,14 @@ bool IsValidMove(ChessPiece* piece, int targetRow, int targetCol) {
 		if (startRow != targetRow && startCol != targetCol) {
 			return false; // No es movimiento de torre
 		}
-		// Verificar que el camino esté despejado
+		// Verificar que el camino estï¿½ despejado
 		return IsPathClear(startRow, startCol, targetRow, targetCol);
 	}
 
 	case KNIGHT: {
 		int dRow = std::abs(targetRow - startRow);
 		int dCol = std::abs(targetCol - startCol);
-		// Movimiento en 'L' (2 en una dirección, 1 en la perpendicular)
+		// Movimiento en 'L' (2 en una direcciï¿½n, 1 en la perpendicular)
 		return (dRow == 2 && dCol == 1) || (dRow == 1 && dCol == 2);
 		// El caballo salta, no necesita IsPathClear
 	}
@@ -687,7 +726,7 @@ bool IsValidMove(ChessPiece* piece, int targetRow, int targetCol) {
 		if (std::abs(targetRow - startRow) != std::abs(targetCol - startCol)) {
 			return false; // No es movimiento de alfil
 		}
-		// Verificar que el camino esté despejado
+		// Verificar que el camino estï¿½ despejado
 		return IsPathClear(startRow, startCol, targetRow, targetCol);
 	}
 
@@ -698,14 +737,14 @@ bool IsValidMove(ChessPiece* piece, int targetRow, int targetCol) {
 		if (!isStraight && !isDiagonal) {
 			return false; // No es movimiento de reina
 		}
-		// Verificar que el camino esté despejado
+		// Verificar que el camino estï¿½ despejado
 		return IsPathClear(startRow, startCol, targetRow, targetCol);
 	}
 
 	case KING: {
 		int dRow = std::abs(targetRow - startRow);
 		int dCol = std::abs(targetCol - startCol);
-		// Mover solo 1 casilla en cualquier dirección
+		// Mover solo 1 casilla en cualquier direcciï¿½n
 		// Faltan: Enroque, Chequeo de Jaque
 		return dRow <= 1 && dCol <= 1;
 	}
@@ -719,8 +758,8 @@ bool IsValidMove(ChessPiece* piece, int targetRow, int targetCol) {
 // --- Fin de ACTUALIZADA ---
 
 
-// Función para intentar convertir coordenadas del mundo a tablero (¡SIMPLIFICADA!)
-// Asume que el eje Y es la altura y que el tablero está en el plano XZ
+// Funciï¿½n para intentar convertir coordenadas del mundo a tablero (ï¿½SIMPLIFICADA!)
+// Asume que el eje Y es la altura y que el tablero estï¿½ en el plano XZ
 bool WorldToBoardCoordinates(const glm::vec3& worldPos, int& row, int& col) {
 	// Calcula columna basada en X
 	float boardX = worldPos.x - BOARD_OFFSET_X;
@@ -730,42 +769,42 @@ bool WorldToBoardCoordinates(const glm::vec3& worldPos, int& row, int& col) {
 	float boardZ = worldPos.z - BOARD_OFFSET_Z;
 	row = static_cast<int>(floor(boardZ / TILE_SIZE));
 
-	// Verifica si está dentro de los límites del tablero
+	// Verifica si estï¿½ dentro de los lï¿½mites del tablero
 	if (row >= 0 && row < 8 && col >= 0 && col < 8) {
 		return true;
 	}
 	else {
-		row = -1; // Inválido
-		col = -1; // Inválido
+		row = -1; // Invï¿½lido
+		col = -1; // Invï¿½lido
 		return false;
 	}
 }
 
-// --- Añadido: Funciones de Raycasting ---
+// --- Aï¿½adido: Funciones de Raycasting ---
 
-// Calcula la dirección del rayo en coordenadas del MUNDO desde la posición del mouse
+// Calcula la direcciï¿½n del rayo en coordenadas del MUNDO desde la posiciï¿½n del mouse
 glm::vec3 CalculateMouseRay(GLFWwindow* window, double xpos, double ypos, const Camera& cam, const glm::mat4& projectionMatrix) {
 	// 1. Coordenadas Normalizadas del Dispositivo (NDC)
 	// Convierte las coordenadas de pantalla (0 a Width, 0 a Height) a (-1 a 1, -1 a 1)
 	// Es importante invertir Y porque las coordenadas de pantalla suelen empezar arriba
 	// y OpenGL las espera abajo.
 	int screenWidth, screenHeight;
-	glfwGetFramebufferSize(window, &screenWidth, &screenHeight); // Usa el tamaño del framebuffer
+	glfwGetFramebufferSize(window, &screenWidth, &screenHeight); // Usa el tamaï¿½o del framebuffer
 	float ndcX = (2.0f * static_cast<float>(xpos)) / screenWidth - 1.0f;
 	float ndcY = 1.0f - (2.0f * static_cast<float>(ypos)) / screenHeight; // Invertir Y
-	float ndcZ = -1.0f; // Queremos la dirección "hacia adelante" en la pantalla (cerca)
+	float ndcZ = -1.0f; // Queremos la direcciï¿½n "hacia adelante" en la pantalla (cerca)
 
-	// 2. Coordenadas de Clip (Homogéneas)
-	// Simplemente añadimos la componente 'w'. Para la dirección, Z=-1 y W=1 si es posición,
-	// pero para la dirección final en el mundo, W será 0. Por ahora, usamos W=1.
+	// 2. Coordenadas de Clip (Homogï¿½neas)
+	// Simplemente aï¿½adimos la componente 'w'. Para la direcciï¿½n, Z=-1 y W=1 si es posiciï¿½n,
+	// pero para la direcciï¿½n final en el mundo, W serï¿½ 0. Por ahora, usamos W=1.
 	glm::vec4 ray_clip = glm::vec4(ndcX, ndcY, -1.0f, 1.0f);
 
-	// 3. Coordenadas de Cámara (Eye Space)
-	// Des-proyectamos usando la inversa de la matriz de proyección
+	// 3. Coordenadas de Cï¿½mara (Eye Space)
+	// Des-proyectamos usando la inversa de la matriz de proyecciï¿½n
 	glm::mat4 invProjection = glm::inverse(projectionMatrix);
 	glm::vec4 ray_eye = invProjection * ray_clip;
-	// Queremos una dirección, no un punto. Z=-1 indica "hacia adelante" en espacio de cámara.
-	// W=0 indica que es un vector de dirección.
+	// Queremos una direcciï¿½n, no un punto. Z=-1 indica "hacia adelante" en espacio de cï¿½mara.
+	// W=0 indica que es un vector de direcciï¿½n.
 	ray_eye = glm::vec4(ray_eye.x, ray_eye.y, -1.0f, 0.0f);
 
 	// 4. Coordenadas del Mundo (World Space)
@@ -773,230 +812,107 @@ glm::vec3 CalculateMouseRay(GLFWwindow* window, double xpos, double ypos, const 
 	glm::mat4 invView = glm::inverse(cam.GetViewMatrix());
 	glm::vec3 ray_world = glm::vec3(invView * ray_eye);
 
-	// 5. Normalizar el vector de dirección
+	// 5. Normalizar el vector de direcciï¿½n
 	ray_world = glm::normalize(ray_world);
 
 	return ray_world;
 }
 
 // Calcula la distancia 't' a lo largo del rayo donde intersecta un plano.
-// Devuelve -1.0 si no hay intersección o si está detrás del origen del rayo.
+// Devuelve -1.0 si no hay intersecciï¿½n o si estï¿½ detrï¿½s del origen del rayo.
 // planeNormal: Vector normal al plano (debe ser unitario)
-// planePoint: Cualquier punto conocido que esté sobre el plano
+// planePoint: Cualquier punto conocido que estï¿½ sobre el plano
 float RayPlaneIntersection(const glm::vec3& rayOrigin, const glm::vec3& rayDirection, const glm::vec3& planePoint, const glm::vec3& planeNormal) {
 
-	// Denominador de la fórmula de intersección
+	// Denominador de la fï¿½rmula de intersecciï¿½n
 	float denominator = glm::dot(planeNormal, rayDirection);
 
 	// Comprobar si el rayo es paralelo al plano (o casi)
 	if (std::abs(denominator) < 0.0001f) {
-		return -1.0f; // No hay intersección (o infinitas si el origen está en el plano)
+		return -1.0f; // No hay intersecciï¿½n (o infinitas si el origen estï¿½ en el plano)
 	}
 
-	// Numerador de la fórmula
+	// Numerador de la fï¿½rmula
 	glm::vec3 vectorToPlane = planePoint - rayOrigin;
 	float numerator = glm::dot(planeNormal, vectorToPlane);
 
 	// Calcular la distancia 't'
 	float t = numerator / denominator;
 
-	// Devolver 't' solo si la intersección está "delante" del rayo
-	// (Podrías querer permitir t=0 si el origen está justo en el plano)
+	// Devolver 't' solo si la intersecciï¿½n estï¿½ "delante" del rayo
+	// (Podrï¿½as querer permitir t=0 si el origen estï¿½ justo en el plano)
 	// if (t >= 0.0f) {
 	//     return t;
 	// } else {
-	//     return -1.0f; // Intersección detrás del origen del rayo
+	//     return -1.0f; // Intersecciï¿½n detrï¿½s del origen del rayo
 	// }
-	return t; // Devolvemos t incluso si es negativo por ahora, lo filtraremos después
+	return t; // Devolvemos t incluso si es negativo por ahora, lo filtraremos despuï¿½s
 }
 
 
-// --- ACTUALIZADA: Obtener el punto de intersección en el plano del tablero usando Raycasting ---
-// --- ACTUALIZADA v2: Obtener el punto de intersección en el plano del tablero usando Raycasting ---
-// Calcula la matriz de proyección internamente usando cam.GetZoom()
+// --- ACTUALIZADA: Obtener el punto de intersecciï¿½n en el plano del tablero usando Raycasting ---
+// --- ACTUALIZADA v2: Obtener el punto de intersecciï¿½n en el plano del tablero usando Raycasting ---
+// Calcula la matriz de proyecciï¿½n internamente usando cam.GetZoom()
 glm::vec3 GetBoardIntersectionPoint(GLFWwindow* window, double xpos, double ypos, const Camera& cam) {
 
 	// Obtener dimensiones actuales del framebuffer para el aspect ratio
 	int screenWidth, screenHeight;
 	glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
-	// Evitar división por cero si la ventana está minimizada
+	// Evitar divisiï¿½n por cero si la ventana estï¿½ minimizada
 	if (screenHeight == 0) screenHeight = 1;
 	float aspectRatio = static_cast<float>(screenWidth) / static_cast<float>(screenHeight);
 
-	// --- CORRECCIÓN AQUÍ ---
-	// Calcular la matriz de proyección usando los datos de la cámara y la ventana
+	// --- CORRECCIï¿½N AQUï¿½ ---
+	// Calcular la matriz de proyecciï¿½n usando los datos de la cï¿½mara y la ventana
 	// Asume que GetZoom() devuelve el FoV en grados. Near=0.1, Far=100.0 son valores comunes.
 	glm::mat4 projectionMatrix = glm::perspective(glm::radians(cam.GetZoom()), aspectRatio, 0.1f, 100.0f);
-	// --- FIN CORRECCIÓN ---
+	// --- FIN CORRECCIï¿½N ---
 
-	// Calcular la dirección del rayo en coordenadas del mundo
-	// (CalculateMouseRay necesita la matriz de proyección que acabamos de calcular)
+	// Calcular la direcciï¿½n del rayo en coordenadas del mundo
+	// (CalculateMouseRay necesita la matriz de proyecciï¿½n que acabamos de calcular)
 	glm::vec3 rayDirection = CalculateMouseRay(window, xpos, ypos, cam, projectionMatrix);
 
-	// Origen del rayo es la posición de la cámara
+	// Origen del rayo es la posiciï¿½n de la cï¿½mara
 	glm::vec3 rayOrigin = cam.GetPosition();
 
 	// Definir el plano del tablero
 	glm::vec3 planeNormal = glm::vec3(0.0f, 1.0f, 0.0f); // Normal Y hacia arriba
 	glm::vec3 planePoint = glm::vec3(0.0f, PIECE_Y_OFFSET, 0.0f); // Punto en el plano Y=PIECE_Y_OFFSET
 
-	// Calcular la intersección
+	// Calcular la intersecciï¿½n
 	float t = RayPlaneIntersection(rayOrigin, rayDirection, planePoint, planeNormal);
 
-	// Verificar si hubo intersección válida (delante de la cámara)
+	// Verificar si hubo intersecciï¿½n vï¿½lida (delante de la cï¿½mara)
 	if (t >= 0.0f) {
-		// Calcular el punto exacto de intersección
+		// Calcular el punto exacto de intersecciï¿½n
 		glm::vec3 intersectionPoint = rayOrigin + rayDirection * t;
 		return intersectionPoint;
 	}
 	else {
-		// No hubo intersección válida
-		return glm::vec3(-999.0f); // Devolver un punto inválido conocido
+		// No hubo intersecciï¿½n vï¿½lida
+		return glm::vec3(-999.0f); // Devolver un punto invï¿½lido conocido
 	}
 }
 
-// Callback para botones del mouse
-void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-		double xpos, ypos;
-		glfwGetCursorPos(window, &xpos, &ypos);
 
-		// --- OBTENER COORDENADAS DEL TABLERO DESDE EL CLIC ---
-		// 1. Obtener el punto de intersección en el plano del tablero
-		// Dentro de MouseButtonCallback:
-		glm::vec3 intersectionPoint = GetBoardIntersectionPoint(window, xpos, ypos, camera); // Pasa la cámara
-		//glm::vec3 intersectionPoint = GetBoardIntersectionPoint(window, xpos, ypos);
-
-		if (intersectionPoint.y > -900.0f) { // Verifica si la intersección fue válida
-			// 2. Convertir el punto de intersección a coordenadas (fila, columna)
-			int targetRow, targetCol;
-			if (WorldToBoardCoordinates(intersectionPoint, targetRow, targetCol)) {
-				ChessPiece& clickedPiece = board[targetRow][targetCol];
-
-				// --- LÓGICA DE SELECCIÓN/MOVIMIENTO ---
-				if (selectedPiece == nullptr) {
-					// Nada seleccionado: Intentar seleccionar una pieza
-					ChessPiece& potentialPiece = board[targetRow][targetCol];
-					if (clickedPiece.type != EMPTY && clickedPiece.color == currentPlayer) {
-						clickedPiece.isSelected = true; // Resaltar la pieza seleccionada
-						selectedPiece = &clickedPiece;
-						selectedRow = targetRow;
-						selectedCol = targetCol;
-						// (Opcional: Añadir resaltado visual aquí)
-					}
-					/*else {
-						std::cout << "Casilla vacía o pieza del oponente." << std::endl;
-					}*/
-				}
-				else {
-					// Ya hay una pieza seleccionada: Intentar moverla
-					if (IsValidMove(selectedPiece, targetRow, targetCol)) {
-						selectedPiece->isSelected = false; // Quitar resaltado
-						// Mover la pieza lógicamente
-						ChessPiece& targetSquare = board[targetRow][targetCol];
-
-						// Captura (si hay pieza enemiga)
-						if (targetSquare.type != EMPTY) {
-							std::cout << "Captura realizada en " << targetRow << "," << targetCol << std::endl;
-							// (Aquí podrías mover la pieza capturada fuera del tablero visualmente)
-						}
-
-						// Mover la pieza
-						targetSquare = *selectedPiece; // Copia la pieza seleccionada a la nueva casilla
-						targetSquare.row = targetRow;  // Actualiza su nueva fila
-						targetSquare.col = targetCol;  // Actualiza su nueva columna
-
-						// Vaciar la casilla original
-						board[selectedRow][selectedCol] = ChessPiece(); // Crea pieza vacía
-						board[selectedRow][selectedCol].row = selectedRow; // Mantiene coords lógicas
-						board[selectedRow][selectedCol].col = selectedCol; // Mantiene coords lógicas
-
-						std::cout << "Pieza movida de " << selectedRow << "," << selectedCol << " a " << targetRow << "," << targetCol << std::endl;
-
-
-						// Cambiar turno
-						currentPlayer = (currentPlayer == WHITE) ? BLACK : WHITE;
-						std::cout << "Turno de: " << (currentPlayer == WHITE ? "Blancas" : "Negras") << std::endl;
-
-						// Deseleccionar
-						selectedPiece->isSelected = false; // Quitar resaltado
-						selectedPiece = nullptr;
-						selectedRow = -1;
-						selectedCol = -1;
-						// (Opcional: Quitar resaltado visual)
-
-					}
-					else {
-						
-						std::cout << "Movimiento inválido a " << targetRow << "," << targetCol << std::endl;
-						// Si el segundo clic fue en otra pieza propia, cambiar selección
-						if (board[targetRow][targetCol].type != EMPTY && board[targetRow][targetCol].color == currentPlayer) {
-							selectedPiece = &board[targetRow][targetCol];
-							selectedRow = targetRow;
-							selectedCol = targetCol;
-							std::cout << "Nueva pieza seleccionada: " << selectedPiece->type << " en " << targetRow << "," << targetCol << std::endl;
-						}
-						else {
-							// Si no es movimiento válido ni cambio de selección, deseleccionar
-							selectedPiece->isSelected = false; // Quitar resaltado
-							selectedPiece = nullptr;
-							selectedRow = -1;
-							selectedCol = -1;
-							std::cout << "Selección cancelada." << std::endl;
-							// (Opcional: Quitar resaltado visual)
-						}
-					}
-				}
-			}
-			else {
-				
-				std::cout << "Clic fuera del tablero (según conversión)." << std::endl;
-				// Si hay pieza seleccionada y se hace clic fuera, cancelar selección
-				if (selectedPiece != nullptr) {
-					selectedPiece->isSelected = false; // Quitar resaltado
-					selectedPiece = nullptr;
-					selectedRow = -1;
-					selectedCol = -1;
-					std::cout << "Selección cancelada." << std::endl;
-					// (Opcional: Quitar resaltado visual)
-				}
-			}
-		}
-		else {
-			
-			std::cout << "Clic no intersectó el plano del tablero." << std::endl;
-			// Si hay pieza seleccionada y se hace clic fuera, cancelar selección
-			if (selectedPiece != nullptr) {
-				selectedPiece->isSelected = false; // Quitar resaltado
-				selectedPiece = nullptr;
-				selectedRow = -1;
-				selectedCol = -1;
-				std::cout << "Selección cancelada." << std::endl;
-				// (Opcional: Quitar resaltado visual)
-			}
-		}
-	}
-}
-
-// --- Fin de Añadido ---
 
 //Inicializacion del tablero
-// --- Añadido: Función para inicializar el tablero ---
+// --- Aï¿½adido: Funciï¿½n para inicializar el tablero ---
 void InitializeBoard(
-	// Pasa aquí los punteros a tus modelos cargados
+	// Pasa aquï¿½ los punteros a tus modelos cargados
 	Model* pPeonW, Model* pTorreW, Model* pCaballoW, Model* pAlfilW, Model* pReinaW, Model* pReyW,
 	Model* pPeonB, Model* pTorreB, Model* pCaballoB, Model* pAlfilB, Model* pReinaB, Model* pReyB
 ) {
 	// Limpiar tablero (opcional, por si acaso)
 	for (int r = 0; r < 8; ++r) {
 		for (int c = 0; c < 8; ++c) {
-			board[r][c] = ChessPiece(); // Crea pieza vacía por defecto
+			board[r][c] = ChessPiece(); // Crea pieza vacï¿½a por defecto
 			board[r][c].row = r;
 			board[r][c].col = c;
 		}
 	}
 
-	// Colocar piezas blancas (Overworld en tu código) - ¡AJUSTA MODELOS Y ESCALAS!
+	// Colocar piezas blancas (Overworld en tu cï¿½digo) - ï¿½AJUSTA MODELOS Y ESCALAS!
 	// Fila 0 (Trasera Blanca)
 	board[0][0] = { ROOK,   WHITE, pTorreW,   0, 0, glm::vec3(0.0f), glm::vec3(3.5f), 0.0f }; // Golem
 	board[0][1] = { KNIGHT, WHITE, pCaballoW, 0, 1, glm::vec3(0.0f), glm::vec3(4.35f), 0.0f }; // Caballo
@@ -1011,7 +927,7 @@ void InitializeBoard(
 		board[1][c] = { PAWN, WHITE, pPeonW, 1, c, glm::vec3(0.0f,-1.0f, 0.0f), glm::vec3(4.0f), 0.0f }; // Pollo
 	}
 
-	// Colocar piezas negras (Nether en tu código) - ¡AJUSTA MODELOS, ESCALAS y ROTACIÓN!
+	// Colocar piezas negras (Nether en tu cï¿½digo) - ï¿½AJUSTA MODELOS, ESCALAS y ROTACIï¿½N!
 	// Fila 7 (Trasera Negra)
 	board[7][0] = { ROOK,   BLACK, pTorreB,   7, 0, glm::vec3(0.0f), glm::vec3(0.7f), 1.55f }; // Piglin
 	board[7][1] = { KNIGHT, BLACK, pCaballoB, 7, 1, glm::vec3(0.0f,0.35f, 0.0f), glm::vec3(4.15f, 4.15f, -4.15f), 0.0f }; // Blaze
@@ -1035,14 +951,10 @@ void InitializeBoard(
 	}
 }
 
-// --- Añadido: Función para obtener coordenadas del mundo desde fila/columna ---
+// --- Anadido: Funcion para obtener coordenadas del mundo desde fila/columna ---
 glm::vec3 GetWorldCoordinates(int row, int col) {
 	// Centra la pieza en la casilla
 	float worldX = BOARD_OFFSET_X + col * TILE_SIZE + TILE_SIZE / 2.0f;
 	float worldZ = BOARD_OFFSET_Z + row * TILE_SIZE + TILE_SIZE / 2.0f;
 	return glm::vec3(worldX, PIECE_Y_OFFSET, worldZ);
 }
-
-// --- Fin de Añadidos ---
-
-
