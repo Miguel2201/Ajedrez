@@ -106,6 +106,15 @@ bool firstMouse = true;
 glm::vec3 lightPos(0.0f, 0.0f, 0.0f);
 bool active;
 
+// Cámara lateral (vista desde un costado)
+Camera cameraSideView(
+	glm::vec3(-45.0f, 18.0f, 21.0f),  // Posición (x, y, z): izquierda, arriba, centrada en Z
+	glm::vec3(0.0f, 1.0f, 0.0f),     // Vector "up" (eje Y)
+	0.0f,                          // Yaw: rotación horizontal (-90 grados para mirar hacia el tablero)
+	-35.0f                           // Pitch: inclinación hacia abajo
+);
+bool useSideCamera = false;  // Controlador para alternar cámaras
+
 // Positions of the point lights
 glm::vec3 pointLightPositions[] = {
 	glm::vec3(-2.0f,0.0f, -2.0f),
@@ -313,7 +322,14 @@ int main()
 		// Set material properties
 		glUniform1f(glGetUniformLocation(lightingShader.Program, "material.shininess"), 16.0f);
 
-		glm::mat4 view = camera.GetViewMatrix();
+		// Obtener la matriz de vista de la cámara activa
+		glm::mat4 view;
+		if (useSideCamera) {
+			view = cameraSideView.GetViewMatrix();
+		}
+		else {
+			view = camera.GetViewMatrix();
+		}
 		GLint modelLoc = glGetUniformLocation(lightingShader.Program, "model");
 		GLint viewLoc = glGetUniformLocation(lightingShader.Program, "view");
 		GLint projLoc = glGetUniformLocation(lightingShader.Program, "projection");
@@ -505,100 +521,62 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
 
 
 // Moves/alters the camera positions based on user input
-void DoMovement()
-{
-
-	// Camera controls
-	if (keys[GLFW_KEY_W] || keys[GLFW_KEY_UP])
-	{
-		camera.ProcessKeyboard(FORWARD, deltaTime);
-
+void DoMovement() {
+	// Camera controls (solo para la cámara principal)
+	if (!useSideCamera) {
+		if (keys[GLFW_KEY_W] || keys[GLFW_KEY_UP]) {
+			camera.ProcessKeyboard(FORWARD, deltaTime);
+		}
+		if (keys[GLFW_KEY_S] || keys[GLFW_KEY_DOWN]) {
+			camera.ProcessKeyboard(BACKWARD, deltaTime);
+		}
+		if (keys[GLFW_KEY_A] || keys[GLFW_KEY_LEFT]) {
+			camera.ProcessKeyboard(LEFT, deltaTime);
+		}
+		if (keys[GLFW_KEY_D] || keys[GLFW_KEY_RIGHT]) {
+			camera.ProcessKeyboard(RIGHT, deltaTime);
+		}
 	}
 
-	if (keys[GLFW_KEY_S] || keys[GLFW_KEY_DOWN])
-	{
-		camera.ProcessKeyboard(BACKWARD, deltaTime);
-
-
-	}
-
-	if (keys[GLFW_KEY_A] || keys[GLFW_KEY_LEFT])
-	{
-		camera.ProcessKeyboard(LEFT, deltaTime);
-
-
-	}
-
-	if (keys[GLFW_KEY_D] || keys[GLFW_KEY_RIGHT])
-	{
-		camera.ProcessKeyboard(RIGHT, deltaTime);
-
-
-	}
-
-	if (keys[GLFW_KEY_T])
-	{
-		pointLightPositions[0].x += 0.01f;
-	}
-	if (keys[GLFW_KEY_G])
-	{
-		pointLightPositions[0].x -= 0.01f;
-	}
-
-	if (keys[GLFW_KEY_Y])
-	{
-		pointLightPositions[0].y += 0.01f;
-	}
-
-	if (keys[GLFW_KEY_H])
-	{
-		pointLightPositions[0].y -= 0.01f;
-	}
-	if (keys[GLFW_KEY_U])
-	{
-		pointLightPositions[0].z -= 0.1f;
-	}
-	if (keys[GLFW_KEY_J])
-	{
-		pointLightPositions[0].z += 0.01f;
-	}
-
+	// Controles de luz (independientes de la cámara)
+	if (keys[GLFW_KEY_T]) pointLightPositions[0].x += 0.01f;
+	if (keys[GLFW_KEY_G]) pointLightPositions[0].x -= 0.01f;
+	if (keys[GLFW_KEY_Y]) pointLightPositions[0].y += 0.01f;
+	if (keys[GLFW_KEY_H]) pointLightPositions[0].y -= 0.01f;
+	if (keys[GLFW_KEY_U]) pointLightPositions[0].z -= 0.1f;
+	if (keys[GLFW_KEY_J]) pointLightPositions[0].z += 0.01f;
 }
-
-// Is called whenever a key is pressed/released via GLFW
-void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode)
-{
-	if (GLFW_KEY_ESCAPE == key && GLFW_PRESS == action)
-	{
+void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode) {
+	if (GLFW_KEY_ESCAPE == key && GLFW_PRESS == action) {
 		glfwSetWindowShouldClose(window, GL_TRUE);
 	}
 
-	if (key >= 0 && key < 1024)
-	{
-		if (action == GLFW_PRESS)
-		{
+	if (key >= 0 && key < 1024) {
+		if (action == GLFW_PRESS) {
 			keys[key] = true;
+			// Alternar cámaras
+			if (key == GLFW_KEY_1) {
+				useSideCamera = false;  // Cámara principal
+			}
+			if (key == GLFW_KEY_2) {
+				useSideCamera = true;   // Cámara lateral
+			}
 		}
-		else if (action == GLFW_RELEASE)
-		{
+		else if (action == GLFW_RELEASE) {
 			keys[key] = false;
 		}
 	}
 
-	if (keys[GLFW_KEY_SPACE])
-	{
+	if (keys[GLFW_KEY_SPACE]) {
 		active = !active;
-		if (active)
-		{
+		if (active) {
 			Light1 = glm::vec3(1.0f, 1.0f, 0.0f);
 		}
-		else
-		{
-			Light1 = glm::vec3(0);//Cuado es solo un valor en los 3 vectores pueden dejar solo una componente
+		else {
+			Light1 = glm::vec3(0);
 		}
 	}
 }
-
 void MouseCallback(GLFWwindow* window, double xPos, double yPos)
 {
 	if (firstMouse)
