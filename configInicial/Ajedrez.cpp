@@ -117,10 +117,10 @@ bool useSideCamera = false;  // Controlador para alternar cámaras
 
 // Positions of the point lights
 glm::vec3 pointLightPositions[] = {
-	glm::vec3(-2.0f,0.0f, -2.0f),
-	glm::vec3(2.0f,0.0f, 2.0f),
-	glm::vec3(2.0f,0.0f,  -2.0f),
-	glm::vec3(-2.0f,0.0f, 2.0f)
+	glm::vec3(-2.0f,-5.0f, -2.0f),
+	glm::vec3(2.0f,-5.0f, 2.0f),
+	glm::vec3(2.0f,-5.0f,  -2.0f),
+	glm::vec3(-2.0f,-5.0f, 2.0f)
 };
 
 float vertices[] = {
@@ -203,7 +203,7 @@ int main()
 	Shader lampShader("Shader/lamp.vs", "Shader/lamp.frag");
 
 	// Carga de modelos
-	Model Piso((char*)"Models/Minecraft/Tablero2.obj");
+	Model Piso((char*)"Models/Minecraft/tablero2.obj");
 	// Overworld
 	Model steve((char*)"Models/Minecraft/steve.obj");
 	Model alex((char*)"Models/Minecraft/alex.obj");
@@ -339,8 +339,8 @@ int main()
 
 		// Dibujar el tablero
 		glm::mat4 model = glm::mat4(1.0f);
-		model = glm::scale(model, glm::vec3(82.0f, 1.0f, 84.0f));
-		model = glm::translate(model, glm::vec3(0.0f, -3.75f, 0.25f));
+		model = glm::scale(model, glm::vec3(82.0f, 75.0f, 84.0f));
+		model = glm::translate(model, glm::vec3(0.0f, -0.054f, 0.25f));
 		model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 		Piso.Draw(lightingShader);
@@ -758,7 +758,7 @@ bool WorldToBoardCoordinates(const glm::vec3& worldPos, int& row, int& col) {
 	}
 }
 
-// --- A�adido: Funciones de Raycasting ---
+// --- Anadido: Funciones de Raycasting ---
 
 // Calcula la direcci�n del rayo en coordenadas del MUNDO desde la posici�n del mouse
 glm::vec3 CalculateMouseRay(GLFWwindow* window, double xpos, double ypos, const Camera& cam, const glm::mat4& projectionMatrix) {
@@ -772,7 +772,7 @@ glm::vec3 CalculateMouseRay(GLFWwindow* window, double xpos, double ypos, const 
 	float ndcY = 1.0f - (2.0f * static_cast<float>(ypos)) / screenHeight; // Invertir Y
 	float ndcZ = -1.0f; // Queremos la direcci�n "hacia adelante" en la pantalla (cerca)
 
-	// 2. Coordenadas de Clip (Homog�neas)
+	// 2. Coordenadas de Clip (Homogeneas)
 	// Simplemente a�adimos la componente 'w'. Para la direcci�n, Z=-1 y W=1 si es posici�n,
 	// pero para la direcci�n final en el mundo, W ser� 0. Por ahora, usamos W=1.
 	glm::vec4 ray_clip = glm::vec4(ndcX, ndcY, -1.0f, 1.0f);
