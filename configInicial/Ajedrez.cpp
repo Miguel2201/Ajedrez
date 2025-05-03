@@ -35,15 +35,22 @@ enum PieceColor { NONE, WHITE, BLACK };
 
 // Estructura para representar una Pieza de Ajedrez
 struct ChessPiece {
-	PieceType type = EMPTY;
-	PieceColor color = NONE;
-	Model* model = nullptr;
-	int row = -1;
-	int col = -1;
-	glm::vec3 positionOffset = glm::vec3(0.0f);
-	glm::vec3 scale = glm::vec3(1.0f);
-	float rotationY = 1.0f;
-	bool isSelected = false;
+    PieceType type = EMPTY;
+    PieceColor color = NONE;
+    Model* model = nullptr;
+    int row = -1;
+    int col = -1;
+    glm::vec3 positionOffset = glm::vec3(0.0f);
+    glm::vec3 scale = glm::vec3(1.0f);
+    float rotationY = 1.0f;
+    bool isSelected = false;
+
+    // Para animación
+    bool isMoving = false;
+    glm::vec3 startPos;
+    glm::vec3 targetPos;
+    float moveProgress = 0.0f;
+    float moveSpeed = 0.2f; // Velocidad de la animación (ajustable)
 };
 
 // Representación del tablero (8x8)
@@ -79,9 +86,10 @@ int blackCapturedCount = 0;
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode);
 void MouseCallback(GLFWwindow* window, double xPos, double yPos);
 void DoMovement();
+void UpdateAnimations(float deltaTime);
 void InitializeBoard(
-	Model* pPeonW, Model* pTorreW, Model* pCaballoW, Model* pAlfilW, Model* pReinaW, Model* pReyW,
-	Model* pPeonB, Model* pTorreB, Model* pCaballoB, Model* pAlfilB, Model* pReinaB, Model* pReyB
+    Model* pPeonW, Model* pTorreW, Model* pCaballoW, Model* pAlfilW, Model* pReinaW, Model* pReyW,
+    Model* pPeonB, Model* pTorreB, Model* pCaballoB, Model* pAlfilB, Model* pReinaB, Model* pReyB
 );
 glm::vec3 GetWorldCoordinates(int row, int col);
 bool IsPathClear(int startRow, int startCol, int endRow, int endCol);
@@ -108,63 +116,63 @@ bool active;
 
 // Cámara lateral (vista desde un costado)
 Camera cameraSideView(
-	glm::vec3(-45.0f, 18.0f, 21.0f),  // Posición (x, y, z): izquierda, arriba, centrada en Z
-	glm::vec3(0.0f, 1.0f, 0.0f),     // Vector "up" (eje Y)
-	0.0f,                          // Yaw: rotación horizontal (-90 grados para mirar hacia el tablero)
-	-35.0f                           // Pitch: inclinación hacia abajo
+    glm::vec3(-45.0f, 18.0f, 21.0f),
+    glm::vec3(0.0f, 1.0f, 0.0f),
+    0.0f,
+    -35.0f
 );
-bool useSideCamera = false;  // Controlador para alternar cámaras
+bool useSideCamera = false;
 
 // Positions of the point lights
 glm::vec3 pointLightPositions[] = {
-	glm::vec3(-2.0f,-5.0f, -2.0f),
-	glm::vec3(2.0f,-5.0f, 2.0f),
-	glm::vec3(2.0f,-5.0f,  -2.0f),
-	glm::vec3(-2.0f,-5.0f, 2.0f)
+    glm::vec3(-2.0f,-5.0f, -2.0f),
+    glm::vec3(2.0f,-5.0f, 2.0f),
+    glm::vec3(2.0f,-5.0f,  -2.0f),
+    glm::vec3(-2.0f,-5.0f, 2.0f)
 };
 
 float vertices[] = {
-	-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-	 0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-	 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-	 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-	-0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-	-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
 
-	-0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-	 0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-	 0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-	 0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-	-0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-	-0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+     0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
 
-	-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-	-0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-	-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-	-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-	-0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-	-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
 
-	 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-	 0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-	 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-	 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-	 0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-	 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
 
-	-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-	 0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-	 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-	 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-	-0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-	-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
 
-	-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-	 0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-	 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-	 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-	-0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-	-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
+    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+     0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
 };
 
 glm::vec3 Light1 = glm::vec3(0);
@@ -174,379 +182,443 @@ GLfloat lastFrame = 0.0f;
 
 int main()
 {
-	glfwInit();
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Ajedrez 3D", nullptr, nullptr);
+    glfwInit();
+    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Ajedrez 3D", nullptr, nullptr);
 
-	if (nullptr == window)
-	{
-		std::cout << "Failed to create GLFW window" << std::endl;
-		glfwTerminate();
-		return EXIT_FAILURE;
-	}
+    if (nullptr == window)
+    {
+        std::cout << "Failed to create GLFW window" << std::endl;
+        glfwTerminate();
+        return EXIT_FAILURE;
+    }
 
-	glfwMakeContextCurrent(window);
-	glfwGetFramebufferSize(window, &SCREEN_WIDTH, &SCREEN_HEIGHT);
-	glfwSetKeyCallback(window, KeyCallback);
-	glfwSetCursorPosCallback(window, MouseCallback);
-	glfwSetMouseButtonCallback(window, MouseButtonCallback);
+    glfwMakeContextCurrent(window);
+    glfwGetFramebufferSize(window, &SCREEN_WIDTH, &SCREEN_HEIGHT);
+    glfwSetKeyCallback(window, KeyCallback);
+    glfwSetCursorPosCallback(window, MouseCallback);
+    glfwSetMouseButtonCallback(window, MouseButtonCallback);
 
-	glewExperimental = GL_TRUE;
-	if (GLEW_OK != glewInit())
-	{
-		std::cout << "Failed to initialize GLEW" << std::endl;
-		return EXIT_FAILURE;
-	}
+    glewExperimental = GL_TRUE;
+    if (GLEW_OK != glewInit())
+    {
+        std::cout << "Failed to initialize GLEW" << std::endl;
+        return EXIT_FAILURE;
+    }
 
-	glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-	Shader lightingShader("Shader/lighting.vs", "Shader/lighting.frag");
-	Shader lampShader("Shader/lamp.vs", "Shader/lamp.frag");
+    Shader lightingShader("Shader/lighting.vs", "Shader/lighting.frag");
+    Shader lampShader("Shader/lamp.vs", "Shader/lamp.frag");
 
-	// Carga de modelos
-	Model Piso((char*)"Models/Minecraft/tablero2.obj");
-	// Overworld
-	Model steve((char*)"Models/Minecraft/steve.obj");
-	Model alex((char*)"Models/Minecraft/alex.obj");
-	Model golem((char*)"Models/Minecraft/golem.obj");
-	Model caballo((char*)"Models/Minecraft/caballo.obj");
-	Model perro((char*)"Models/Minecraft/perro.obj");
-	Model pollo((char*)"Models/Minecraft/pollo.obj");
-	// Nether
-	Model warden((char*)"Models/Minecraft/warden.obj");
-	Model dragon((char*)"Models/Minecraft/dragon.obj");
-	Model piglin((char*)"Models/Minecraft/piglin.obj");
-	Model blaze((char*)"Models/Minecraft/blaze.obj");
-	Model enderman((char*)"Models/Minecraft/enderman.obj");
-	Model esqueleto((char*)"Models/Minecraft/esqueleto.obj");
+    // Carga de modelos
+    Model Piso((char*)"Models/Minecraft/tablero2.obj");
+    // Overworld
+    Model steve((char*)"Models/Minecraft/steve.obj");
+    Model alex((char*)"Models/Minecraft/alex.obj");
+    Model golem((char*)"Models/Minecraft/golem.obj");
+    Model caballo((char*)"Models/Minecraft/caballo.obj");
+    Model perro((char*)"Models/Minecraft/perro.obj");
+    Model pollo((char*)"Models/Minecraft/pollo.obj");
+    // Nether
+    Model warden((char*)"Models/Minecraft/warden.obj");
+    Model dragon((char*)"Models/Minecraft/dragon.obj");
+    Model piglin((char*)"Models/Minecraft/piglin.obj");
+    Model blaze((char*)"Models/Minecraft/blaze.obj");
+    Model enderman((char*)"Models/Minecraft/enderman.obj");
+    Model esqueleto((char*)"Models/Minecraft/esqueleto.obj");
 
-	InitializeBoard(
-		&pollo, &golem, &caballo, &perro, &alex, &steve,
-		&esqueleto, &piglin, &blaze, &enderman, &dragon, &warden
-	);
+    InitializeBoard(
+        &pollo, &golem, &caballo, &perro, &alex, &steve,
+        &esqueleto, &piglin, &blaze, &enderman, &dragon, &warden
+    );
 
-	GLuint VBO, VAO;
-	glGenVertexArrays(1, &VAO);
-	glGenBuffers(1, &VBO);
-	glBindVertexArray(VAO);
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-	glEnableVertexAttribArray(1);
+    GLuint VBO, VAO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
 
-	lightingShader.Use();
-	glUniform1i(glGetUniformLocation(lightingShader.Program, "Material.difuse"), 0);
-	glUniform1i(glGetUniformLocation(lightingShader.Program, "Material.specular"), 1);
+    lightingShader.Use();
+    glUniform1i(glGetUniformLocation(lightingShader.Program, "Material.difuse"), 0);
+    glUniform1i(glGetUniformLocation(lightingShader.Program, "Material.specular"), 1);
 
-	glm::mat4 projection = glm::perspective(camera.GetZoom(), (GLfloat)SCREEN_WIDTH / (GLfloat)SCREEN_HEIGHT, 0.1f, 100.0f);
+    glm::mat4 projection = glm::perspective(camera.GetZoom(), (GLfloat)SCREEN_WIDTH / (GLfloat)SCREEN_HEIGHT, 0.1f, 100.0f);
 
-	while (!glfwWindowShouldClose(window))
-	{
-		GLfloat currentFrame = glfwGetTime();
-		deltaTime = currentFrame - lastFrame;
-		lastFrame = currentFrame;
+    while (!glfwWindowShouldClose(window))
+    {
+        GLfloat currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
 
-		glfwPollEvents();
-		DoMovement();
+        glfwPollEvents();
+        DoMovement();
+        UpdateAnimations(deltaTime);
 
-		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glEnable(GL_DEPTH_TEST);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glEnable(GL_DEPTH_TEST);
 
-		lightingShader.Use();
-		glUniform1i(glGetUniformLocation(lightingShader.Program, "diffuse"), 0);
+        lightingShader.Use();
+        glUniform1i(glGetUniformLocation(lightingShader.Program, "diffuse"), 0);
 
-		GLint viewPosLoc = glGetUniformLocation(lightingShader.Program, "viewPos");
-		glUniform3f(viewPosLoc, camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z);
+        GLint viewPosLoc = glGetUniformLocation(lightingShader.Program, "viewPos");
+        glUniform3f(viewPosLoc, camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z);
 
-		// Directional light
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.direction"), -0.2f, -1.0f, -0.3f);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.ambient"), 0.8f, 0.8f, 0.8f);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.diffuse"), 0.5f, 0.5f, 0.5f);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.specular"), 0.0f, 0.0f, 0.0f);
+        // Directional light
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.direction"), -0.2f, -1.0f, -0.3f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.ambient"), 0.8f, 0.8f, 0.8f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.diffuse"), 0.5f, 0.5f, 0.5f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.specular"), 0.0f, 0.0f, 0.0f);
 
-		// Point light 1
-		glm::vec3 lightColor;
-		lightColor.x = abs(sin(glfwGetTime() * Light1.x));
-		lightColor.y = abs(sin(glfwGetTime() * Light1.y));
-		lightColor.z = sin(glfwGetTime() * Light1.z);
+        // Point light 1
+        glm::vec3 lightColor;
+        lightColor.x = abs(sin(glfwGetTime() * Light1.x));
+        lightColor.y = abs(sin(glfwGetTime() * Light1.y));
+        lightColor.z = sin(glfwGetTime() * Light1.z);
 
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[0].position"), pointLightPositions[0].x, pointLightPositions[0].y, pointLightPositions[0].z);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[0].ambient"), lightColor.x, lightColor.y, lightColor.z);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[0].diffuse"), lightColor.x, lightColor.y, lightColor.z);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[0].specular"), 0.0f, 0.0f, 0.0f);
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[0].constant"), 1.0f);
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[0].linear"), 0.045f);
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[0].quadratic"), 0.075f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[0].position"), pointLightPositions[0].x, pointLightPositions[0].y, pointLightPositions[0].z);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[0].ambient"), lightColor.x, lightColor.y, lightColor.z);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[0].diffuse"), lightColor.x, lightColor.y, lightColor.z);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[0].specular"), 0.0f, 0.0f, 0.0f);
+        glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[0].constant"), 1.0f);
+        glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[0].linear"), 0.045f);
+        glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[0].quadratic"), 0.075f);
 
-		// Point light 2
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[1].position"), pointLightPositions[1].x, pointLightPositions[1].y, pointLightPositions[1].z);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[1].ambient"), 0.05f, 0.05f, 0.05f);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[1].diffuse"), 0.0f, 0.05f, 0.0f);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[1].specular"), 0.0f, 0.0f, 0.0f);
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[1].constant"), 1.0f);
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[1].linear"), 0.0f);
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[1].quadratic"), 0.0f);
+        // Point light 2
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[1].position"), pointLightPositions[1].x, pointLightPositions[1].y, pointLightPositions[1].z);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[1].ambient"), 0.05f, 0.05f, 0.05f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[1].diffuse"), 0.0f, 0.05f, 0.0f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[1].specular"), 0.0f, 0.0f, 0.0f);
+        glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[1].constant"), 1.0f);
+        glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[1].linear"), 0.0f);
+        glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[1].quadratic"), 0.0f);
 
-		// Point light 3
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[2].position"), pointLightPositions[2].x, pointLightPositions[2].y, pointLightPositions[2].z);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[2].ambient"), 0.0f, 0.0f, 0.0f);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[2].diffuse"), 0.0f, 0.0f, 0.0f);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[2].specular"), 0.0f, 0.0f, 0.0f);
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[2].constant"), 1.0f);
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[2].linear"), 0.0f);
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[2].quadratic"), 0.0f);
+        // Point light 3
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[2].position"), pointLightPositions[2].x, pointLightPositions[2].y, pointLightPositions[2].z);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[2].ambient"), 0.0f, 0.0f, 0.0f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[2].diffuse"), 0.0f, 0.0f, 0.0f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[2].specular"), 0.0f, 0.0f, 0.0f);
+        glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[2].constant"), 1.0f);
+        glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[2].linear"), 0.0f);
+        glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[2].quadratic"), 0.0f);
 
-		// Point light 4
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[3].position"), pointLightPositions[3].x, pointLightPositions[3].y, pointLightPositions[3].z);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[3].ambient"), 0.10f, 0.0f, 0.10f);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[3].diffuse"), 0.10f, 0.0f, 0.10f);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[3].specular"), 0.0f, 0.0f, 0.0f);
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[3].constant"), 1.0f);
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[3].linear"), 0.0f);
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[3].quadratic"), 0.0f);
+        // Point light 4
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[3].position"), pointLightPositions[3].x, pointLightPositions[3].y, pointLightPositions[3].z);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[3].ambient"), 0.10f, 0.0f, 0.10f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[3].diffuse"), 0.10f, 0.0f, 0.10f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[3].specular"), 0.0f, 0.0f, 0.0f);
+        glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[3].constant"), 1.0f);
+        glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[3].linear"), 0.0f);
+        glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[3].quadratic"), 0.0f);
 
-		// SpotLight
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.position"), camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.direction"), camera.GetFront().x, camera.GetFront().y, camera.GetFront().z);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.ambient"), 0.0f, 0.0f, 0.0f);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.diffuse"), 0.0f, 0.0f, 0.0f);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.specular"), 0.0f, 0.0f, 0.0f);
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "spotLight.constant"), 1.0f);
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "spotLight.linear"), 0.0f);
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "spotLight.quadratic"), 0.0f);
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "spotLight.cutOff"), glm::cos(glm::radians(12.0f)));
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "spotLight.outerCutOff"), glm::cos(glm::radians(12.0f)));
+        // SpotLight
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.position"), camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.direction"), camera.GetFront().x, camera.GetFront().y, camera.GetFront().z);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.ambient"), 0.0f, 0.0f, 0.0f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.diffuse"), 0.0f, 0.0f, 0.0f);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "spotLight.specular"), 0.0f, 0.0f, 0.0f);
+        glUniform1f(glGetUniformLocation(lightingShader.Program, "spotLight.constant"), 1.0f);
+        glUniform1f(glGetUniformLocation(lightingShader.Program, "spotLight.linear"), 0.0f);
+        glUniform1f(glGetUniformLocation(lightingShader.Program, "spotLight.quadratic"), 0.0f);
+        glUniform1f(glGetUniformLocation(lightingShader.Program, "spotLight.cutOff"), glm::cos(glm::radians(12.0f)));
+        glUniform1f(glGetUniformLocation(lightingShader.Program, "spotLight.outerCutOff"), glm::cos(glm::radians(12.0f)));
 
-		// Set material properties
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "material.shininess"), 16.0f);
+        // Set material properties
+        glUniform1f(glGetUniformLocation(lightingShader.Program, "material.shininess"), 16.0f);
 
-		// Obtener la matriz de vista de la cámara activa
-		glm::mat4 view;
-		if (useSideCamera) {
-			view = cameraSideView.GetViewMatrix();
-		}
-		else {
-			view = camera.GetViewMatrix();
-		}
-		GLint modelLoc = glGetUniformLocation(lightingShader.Program, "model");
-		GLint viewLoc = glGetUniformLocation(lightingShader.Program, "view");
-		GLint projLoc = glGetUniformLocation(lightingShader.Program, "projection");
+        // Obtener la matriz de vista de la cámara activa
+        glm::mat4 view;
+        if (useSideCamera) {
+            view = cameraSideView.GetViewMatrix();
+        }
+        else {
+            view = camera.GetViewMatrix();
+        }
+        GLint modelLoc = glGetUniformLocation(lightingShader.Program, "model");
+        GLint viewLoc = glGetUniformLocation(lightingShader.Program, "view");
+        GLint projLoc = glGetUniformLocation(lightingShader.Program, "projection");
 
-		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-		glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
-		// Dibujar el tablero
-		glm::mat4 model = glm::mat4(1.0f);
-		model = glm::scale(model, glm::vec3(82.0f, 75.0f, 84.0f));
-		model = glm::translate(model, glm::vec3(0.0f, -0.054f, 0.25f));
-		model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-		Piso.Draw(lightingShader);
+        // Dibujar el tablero
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::scale(model, glm::vec3(82.0f, 75.0f, 84.0f));
+        model = glm::translate(model, glm::vec3(0.0f, -0.054f, 0.25f));
+        model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        Piso.Draw(lightingShader);
 
-		// Dibujar las piezas en el tablero
-		for (int r = 0; r < 8; ++r) {
-			for (int c = 0; c < 8; ++c) {
-				ChessPiece& piece = board[r][c];
-				if (piece.type != EMPTY && piece.model != nullptr) {
-					glm::mat4 model = glm::mat4(1.0f);
-					glm::vec3 worldPos = GetWorldCoordinates(r, c);
-					worldPos += piece.positionOffset;
+        // Dibujar las piezas en el tablero
+        for (int r = 0; r < 8; ++r) {
+            for (int c = 0; c < 8; ++c) {
+                ChessPiece& piece = board[r][c];
+                if (piece.type != EMPTY && piece.model != nullptr) {
+                    glm::mat4 model = glm::mat4(1.0f);
+                    glm::vec3 worldPos = GetWorldCoordinates(r, c);
 
-					model = glm::translate(model, worldPos);
-					if (piece.rotationY != 0.0f) {
-						model = glm::rotate(model, piece.rotationY, glm::vec3(0.0f, 1.0f, 0.0f));
-					}
-					model = glm::scale(model, piece.scale);
+                    // Aplicar offset de animación si la pieza se está moviendo
+                    if (piece.isMoving) {
+                        worldPos += piece.positionOffset;
+                    }
+                    else {
+                        worldPos += piece.positionOffset; // Para otros offsets estáticos
+                    }
 
-					if (piece.isSelected) {
-						glm::vec3 highlightColor = glm::vec3(1.0f, 1.0f, 0.0f);
-						glUniform3f(glGetUniformLocation(lightingShader.Program, "highlightColor"), highlightColor.x, highlightColor.y, highlightColor.z);
-					}
-					else {
-						glUniform3f(glGetUniformLocation(lightingShader.Program, "highlightColor"), 0.0f, 0.0f, 0.0f);
-					}
+                    model = glm::translate(model, worldPos);
+                    if (piece.rotationY != 0.0f) {
+                        model = glm::rotate(model, piece.rotationY, glm::vec3(0.0f, 1.0f, 0.0f));
+                    }
+                    model = glm::scale(model, piece.scale);
 
-					glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-					piece.model->Draw(lightingShader);
-				}
-			}
-		}
+                    if (piece.isSelected) {
+                        glm::vec3 highlightColor = glm::vec3(1.0f, 1.0f, 0.0f);
+                        glUniform3f(glGetUniformLocation(lightingShader.Program, "highlightColor"), highlightColor.x, highlightColor.y, highlightColor.z);
+                    }
+                    else {
+                        glUniform3f(glGetUniformLocation(lightingShader.Program, "highlightColor"), 0.0f, 0.0f, 0.0f);
+                    }
 
-		// Dibujar piezas capturadas blancas
-		for (size_t i = 0; i < whiteCapturedPieces.size(); i++) {
-			ChessPiece& piece = whiteCapturedPieces[i];
-			if (piece.model != nullptr) {
-				glm::mat4 model = glm::mat4(1.0f);
-				float worldX = CAPTURED_WHITE_X;
-				float worldZ = CAPTURED_Z_START + i * TILE_SIZE * 0.5f;
-				model = glm::translate(model, glm::vec3(worldX, CAPTURED_Y, worldZ));
-				if (piece.rotationY != 0.0f) {
-					model = glm::rotate(model, piece.rotationY, glm::vec3(0.0f, 1.0f, 0.0f));
-				}
-				model = glm::scale(model, piece.scale);
-				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-				piece.model->Draw(lightingShader);
-			}
-		}
+                    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+                    piece.model->Draw(lightingShader);
+                }
+            }
+        }
 
-		// Dibujar piezas capturadas negras
-		for (size_t i = 0; i < blackCapturedPieces.size(); i++) {
-			ChessPiece& piece = blackCapturedPieces[i];
-			if (piece.model != nullptr) {
-				glm::mat4 model = glm::mat4(1.0f);
-				float worldX = CAPTURED_BLACK_X;
-				float worldZ = CAPTURED_Z_START + i * TILE_SIZE * 0.5f;
-				model = glm::translate(model, glm::vec3(worldX, CAPTURED_Y, worldZ));
-				if (piece.rotationY != 0.0f) {
-					model = glm::rotate(model, piece.rotationY, glm::vec3(0.0f, 1.0f, 0.0f));
-				}
-				model = glm::scale(model, piece.scale);
-				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-				piece.model->Draw(lightingShader);
-			}
-		}
+        // Dibujar piezas capturadas blancas
+        for (size_t i = 0; i < whiteCapturedPieces.size(); i++) {
+            ChessPiece& piece = whiteCapturedPieces[i];
+            if (piece.model != nullptr) {
+                glm::mat4 model = glm::mat4(1.0f);
+                float worldX = CAPTURED_WHITE_X;
+                float worldZ = CAPTURED_Z_START + i * TILE_SIZE * 0.5f;
+                model = glm::translate(model, glm::vec3(worldX, CAPTURED_Y, worldZ));
+                if (piece.rotationY != 0.0f) {
+                    model = glm::rotate(model, piece.rotationY, glm::vec3(0.0f, 1.0f, 0.0f));
+                }
+                model = glm::scale(model, piece.scale);
+                glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+                piece.model->Draw(lightingShader);
+            }
+        }
 
-		// Dibujar las luces
-		lampShader.Use();
-		modelLoc = glGetUniformLocation(lampShader.Program, "model");
-		viewLoc = glGetUniformLocation(lampShader.Program, "view");
-		projLoc = glGetUniformLocation(lampShader.Program, "projection");
+        // Dibujar piezas capturadas negras
+        for (size_t i = 0; i < blackCapturedPieces.size(); i++) {
+            ChessPiece& piece = blackCapturedPieces[i];
+            if (piece.model != nullptr) {
+                glm::mat4 model = glm::mat4(1.0f);
+                float worldX = CAPTURED_BLACK_X;
+                float worldZ = CAPTURED_Z_START + i * TILE_SIZE * 0.5f;
+                model = glm::translate(model, glm::vec3(worldX, CAPTURED_Y, worldZ));
+                if (piece.rotationY != 0.0f) {
+                    model = glm::rotate(model, piece.rotationY, glm::vec3(0.0f, 1.0f, 0.0f));
+                }
+                model = glm::scale(model, piece.scale);
+                glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+                piece.model->Draw(lightingShader);
+            }
+        }
 
-		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-		glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+        // Dibujar las luces
+        lampShader.Use();
+        modelLoc = glGetUniformLocation(lampShader.Program, "model");
+        viewLoc = glGetUniformLocation(lampShader.Program, "view");
+        projLoc = glGetUniformLocation(lampShader.Program, "projection");
 
-		for (GLuint i = 0; i < 4; i++) {
-			model = glm::mat4(1);
-			model = glm::translate(model, pointLightPositions[i]);
-			model = glm::scale(model, glm::vec3(0.2f));
-			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-			glBindVertexArray(VAO);
-			glDrawArrays(GL_TRIANGLES, 0, 36);
-		}
-		glBindVertexArray(0);
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
-		glfwSwapBuffers(window);
-	}
+        for (GLuint i = 0; i < 4; i++) {
+            model = glm::mat4(1);
+            model = glm::translate(model, pointLightPositions[i]);
+            model = glm::scale(model, glm::vec3(0.2f));
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+            glBindVertexArray(VAO);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
+        glBindVertexArray(0);
 
-	glfwTerminate();
-	return 0;
+        glfwSwapBuffers(window);
+    }
+
+    glfwTerminate();
+    return 0;
+}
+
+void UpdateAnimations(float deltaTime) {
+    for (int r = 0; r < 8; ++r) {
+        for (int c = 0; c < 8; ++c) {
+            ChessPiece& piece = board[r][c];
+            if (piece.isMoving) {
+                // Guardar el offset Y estático original ANTES de calcular nada más.
+                // Hacemos esto solo una vez al inicio de la animación,
+                // pero como sobrescribimos X y Z, podemos simplemente leerlo cada vez.
+                float staticOffsetY = piece.positionOffset.y; // Guarda el Y actual (debería ser el estático)
+
+                piece.moveProgress += piece.moveSpeed * deltaTime;
+
+                if (piece.moveProgress >= 1.0f) {
+                    piece.moveProgress = 1.0f; // Asegura que termine exactamente en 1.0
+                    piece.isMoving = false;
+                    // Al terminar, restablece SOLO los offsets X y Z de la animación a 0,
+                    // manteniendo el offset Y estático que ya estaba.
+                    piece.positionOffset.x = 0.0f;
+                    piece.positionOffset.z = 0.0f;
+
+   
+                }
+                else {
+                    // Interpolación lineal entre startPos y targetPos
+                    float easedProgress = piece.moveProgress * piece.moveProgress * (3.0f - 2.0f * piece.moveProgress); // Easing
+                    glm::vec3 currentPos = piece.startPos + (piece.targetPos - piece.startPos) * easedProgress;
+
+                    // Calcula la posición lógica de destino (donde la pieza "debería" estar sin offsets)
+                    glm::vec3 targetLogicalPos = GetWorldCoordinates(piece.row, piece.col);
+
+                    // Calcula el offset de animación SOLO para X y Z
+                    piece.positionOffset.x = currentPos.x - targetLogicalPos.x;
+                    piece.positionOffset.z = currentPos.z - targetLogicalPos.z;
+
+                }
+            }
+        }
+    }
 }
 
 void MoveCapturedPiece(ChessPiece& piece) {
-	if (piece.color == WHITE) {
-		whiteCapturedPieces.push_back(piece);
-		whiteCapturedCount++;
-	}
-	else {
-		blackCapturedPieces.push_back(piece);
-		blackCapturedCount++;
-	}
-	// Marcar la pieza como capturada
-	piece.type = EMPTY;
-	piece.color = NONE;
-	piece.model = nullptr;
+    if (piece.color == WHITE) {
+        whiteCapturedPieces.push_back(piece);
+        whiteCapturedCount++;
+    }
+    else {
+        blackCapturedPieces.push_back(piece);
+        blackCapturedCount++;
+    }
+    // Marcar la pieza como capturada
+    piece.type = EMPTY;
+    piece.color = NONE;
+    piece.model = nullptr;
 }
 
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-		double xpos, ypos;
-		glfwGetCursorPos(window, &xpos, &ypos);
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        double xpos, ypos;
+        glfwGetCursorPos(window, &xpos, &ypos);
+        glm::vec3 intersectionPoint = GetBoardIntersectionPoint(window, xpos, ypos, camera);
+        
 
-		glm::vec3 intersectionPoint = GetBoardIntersectionPoint(window, xpos, ypos, camera);
+        if (intersectionPoint.y > -900.0f) {
+            int targetRow, targetCol;
+            if (WorldToBoardCoordinates(intersectionPoint, targetRow, targetCol)) {
+                std::cout << "Clicked on board at: (" << targetRow << "," << targetCol << ")" << std::endl;
+                ChessPiece& clickedPiece = board[targetRow][targetCol];
 
-		if (intersectionPoint.y > -900.0f) {
-			int targetRow, targetCol;
-			if (WorldToBoardCoordinates(intersectionPoint, targetRow, targetCol)) {
-				ChessPiece& clickedPiece = board[targetRow][targetCol];
+                if (selectedPiece == nullptr) {
+                    if (clickedPiece.type != EMPTY && clickedPiece.color == currentPlayer) {
+                        clickedPiece.isSelected = true;
+                        selectedPiece = &clickedPiece;
+                        selectedRow = targetRow;
+                        selectedCol = targetCol;
+                    }
+                }
+                else {
+                    // Dentro del if (IsValidMove(...)) en MouseButtonCallback:
 
-				if (selectedPiece == nullptr) {
-					if (clickedPiece.type != EMPTY && clickedPiece.color == currentPlayer) {
-						clickedPiece.isSelected = true;
-						selectedPiece = &clickedPiece;
-						selectedRow = targetRow;
-						selectedCol = targetCol;
-					}
-				}
-				else {
-					if (IsValidMove(selectedPiece, targetRow, targetCol)) {
-						selectedPiece->isSelected = false;
-						ChessPiece& targetSquare = board[targetRow][targetCol];
+                    if (IsValidMove(selectedPiece, targetRow, targetCol)) {
+                        selectedPiece->isSelected = false;
+                        ChessPiece& targetSquare = board[targetRow][targetCol];
 
-						// Captura de pieza
-						if (targetSquare.type != EMPTY) {
-							MoveCapturedPiece(targetSquare);
-						}
+                        // Captura de pieza (si aplica)
+                        if (targetSquare.type != EMPTY) {
+                            MoveCapturedPiece(targetSquare); // Mueve la pieza *antes* de sobrescribirla
+                        }
 
-						// Mover la pieza
-						targetSquare = *selectedPiece;
-						targetSquare.row = targetRow;
-						targetSquare.col = targetCol;
+                        // 1. Copia la pieza a la nueva posición LÓGICA primero
+                        ChessPiece pieceToMove = *selectedPiece; // Crea una copia temporal
+                        pieceToMove.row = targetRow;
+                        pieceToMove.col = targetCol;
+                        pieceToMove.isSelected = false; // Ya no está seleccionada
 
-						// Vaciar la casilla original
-						board[selectedRow][selectedCol] = ChessPiece();
-						board[selectedRow][selectedCol].row = selectedRow;
-						board[selectedRow][selectedCol].col = selectedCol;
+                        // 2. Vacía la casilla original LÓGICA
+                        board[selectedRow][selectedCol] = ChessPiece();
+                        board[selectedRow][selectedCol].row = selectedRow;
+                        board[selectedRow][selectedCol].col = selectedCol;
 
-						// Cambiar turno
-						currentPlayer = (currentPlayer == WHITE) ? BLACK : WHITE;
+                        // 3. Coloca la pieza copiada en la casilla destino LÓGICA
+                        board[targetRow][targetCol] = pieceToMove;
 
-						// Deseleccionar
-						selectedPiece = nullptr;
-						selectedRow = -1;
-						selectedCol = -1;
-					}
-					else {
-						if (board[targetRow][targetCol].type != EMPTY &&
-							board[targetRow][targetCol].color == currentPlayer) {
-							selectedPiece->isSelected = false;
-							selectedPiece = &board[targetRow][targetCol];
-							selectedPiece->isSelected = true;
-							selectedRow = targetRow;
-							selectedCol = targetCol;
-						}
-						else {
-							selectedPiece->isSelected = false;
-							selectedPiece = nullptr;
-							selectedRow = -1;
-							selectedCol = -1;
-						}
-					}
-				}
-			}
-		}
-	}
+                        // 4. Configura la animación en la pieza que AHORA está en la casilla destino
+                        ChessPiece& movingPiece = board[targetRow][targetCol]; // Obtén referencia a la pieza movida
+                        movingPiece.isMoving = true;
+                        movingPiece.startPos = GetWorldCoordinates(selectedRow, selectedCol); // Posición inicial ANTES del movimiento
+                        movingPiece.targetPos = GetWorldCoordinates(targetRow, targetCol);   // Posición final
+                        movingPiece.moveProgress = 0.0f;
+                        // movingPiece.moveSpeed = 1.0f; // <-- AJUSTA ESTE VALOR si 0.2f es muy rápido o lento una vez funcione
+
+                        // Deseleccionar
+                        selectedPiece = nullptr;
+                        selectedRow = -1;
+                        selectedCol = -1;
+
+                        // CAMBIO DE TURNO (ver siguiente punto)
+                        currentPlayer = (currentPlayer == WHITE) ? BLACK : WHITE; // <-- DESCOMENTAR ESTA LÍNEA AQUÍ
+                    }
+              
+                    else {
+                        if (board[targetRow][targetCol].type != EMPTY &&
+                            board[targetRow][targetCol].color == currentPlayer) {
+                            selectedPiece->isSelected = false;
+                            selectedPiece = &board[targetRow][targetCol];
+                            selectedPiece->isSelected = true;
+                            selectedRow = targetRow;
+                            selectedCol = targetCol;
+                        }
+                        else {
+                            selectedPiece->isSelected = false;
+                            selectedPiece = nullptr;
+                            selectedRow = -1;
+                            selectedCol = -1;
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
-
 
 // Moves/alters the camera positions based on user input
 void DoMovement() {
-	// Camera controls (solo para la cámara principal)
-	if (!useSideCamera) {
-		if (keys[GLFW_KEY_W] || keys[GLFW_KEY_UP]) {
-			camera.ProcessKeyboard(FORWARD, deltaTime);
-		}
-		if (keys[GLFW_KEY_S] || keys[GLFW_KEY_DOWN]) {
-			camera.ProcessKeyboard(BACKWARD, deltaTime);
-		}
-		if (keys[GLFW_KEY_A] || keys[GLFW_KEY_LEFT]) {
-			camera.ProcessKeyboard(LEFT, deltaTime);
-		}
-		if (keys[GLFW_KEY_D] || keys[GLFW_KEY_RIGHT]) {
-			camera.ProcessKeyboard(RIGHT, deltaTime);
-		}
-	}
+    // Camera controls (solo para la cámara principal)
+    if (!useSideCamera) {
+        if (keys[GLFW_KEY_W] || keys[GLFW_KEY_UP]) {
+            camera.ProcessKeyboard(FORWARD, deltaTime);
+        }
+        if (keys[GLFW_KEY_S] || keys[GLFW_KEY_DOWN]) {
+            camera.ProcessKeyboard(BACKWARD, deltaTime);
+        }
+        if (keys[GLFW_KEY_A] || keys[GLFW_KEY_LEFT]) {
+            camera.ProcessKeyboard(LEFT, deltaTime);
+        }
+        if (keys[GLFW_KEY_D] || keys[GLFW_KEY_RIGHT]) {
+            camera.ProcessKeyboard(RIGHT, deltaTime);
+        }
+    }
 
-	// Controles de luz (independientes de la cámara)
-	if (keys[GLFW_KEY_T]) pointLightPositions[0].x += 0.01f;
-	if (keys[GLFW_KEY_G]) pointLightPositions[0].x -= 0.01f;
-	if (keys[GLFW_KEY_Y]) pointLightPositions[0].y += 0.01f;
-	if (keys[GLFW_KEY_H]) pointLightPositions[0].y -= 0.01f;
-	if (keys[GLFW_KEY_U]) pointLightPositions[0].z -= 0.1f;
-	if (keys[GLFW_KEY_J]) pointLightPositions[0].z += 0.01f;
+    // Controles de luz (independientes de la cámara)
+    if (keys[GLFW_KEY_T]) pointLightPositions[0].x += 0.01f;
+    if (keys[GLFW_KEY_G]) pointLightPositions[0].x -= 0.01f;
+    if (keys[GLFW_KEY_Y]) pointLightPositions[0].y += 0.01f;
+    if (keys[GLFW_KEY_H]) pointLightPositions[0].y -= 0.01f;
+    if (keys[GLFW_KEY_U]) pointLightPositions[0].z -= 0.1f;
+    if (keys[GLFW_KEY_J]) pointLightPositions[0].z += 0.01f;
 }
-void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode) {
+
+void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode) { 
 	if (GLFW_KEY_ESCAPE == key && GLFW_PRESS == action) {
 		glfwSetWindowShouldClose(window, GL_TRUE);
 	}
@@ -596,10 +668,10 @@ void MouseCallback(GLFWwindow* window, double xPos, double yPos)
 }
 
 
-// --- A�adido: Funci�n auxiliar para verificar caminos ---
-// Verifica si el camino entre (startRow, startCol) y (endRow, endCol) est� vac�o.
-// �NO verifica la validez del movimiento en s� (horizontal, vertical, diagonal)!
-// Asume que el movimiento es en l�nea recta (horizontal, vertical o diagonal perfecta).
+// --- Anadido: Funci�n auxiliar para verificar caminos ---
+// Verifica si el camino entre (startRow, startCol) y (endRow, endCol) esta vacio.
+// NO verifica la validez del movimiento en si (horizontal, vertical, diagonal)
+// Asume que el movimiento es en linea recta (horizontal, vertical o diagonal perfecta).
 // No chequea la casilla final (endRow, endCol), solo las intermedias.
 bool IsPathClear(int startRow, int startCol, int endRow, int endCol) {
 	// Determinar la direcci�n del movimiento (paso en x, paso en y)
@@ -626,10 +698,10 @@ bool IsPathClear(int startRow, int startCol, int endRow, int endCol) {
 		currentCol += stepX;
 	}
 
-	// Si el bucle termina, significa que todas las casillas intermedias estaban vac�as
+	// Si el bucle termina, significa que todas las casillas intermedias estaban vacias
 	return true; // Camino despejado
 }
-// --- Fin de A�adido ---
+
 
 // --- ACTUALIZADA: Validaci�n de Movimientos de Ajedrez (Reglas B�sicas) ---
 bool IsValidMove(ChessPiece* piece, int targetRow, int targetCol) {
@@ -658,7 +730,7 @@ bool IsValidMove(ChessPiece* piece, int targetRow, int targetCol) {
 		return false;
 	}
 
-	// 2. L�gica Espec�fica por Tipo de Pieza
+	// 2. Logica Especifica por Tipo de Pieza
 	switch (piece->type) {
 	case PAWN: {
 		int forward = (piece->color == WHITE) ? 1 : -1; // Direcci�n de avance

@@ -1,26 +1,31 @@
 ﻿  Ajedrez.cpp
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(246,24): warning C4244: 'inicializando': conversión de 'double' a 'GLfloat'; posible pérdida de datos
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(271,21): warning C4244: '=': conversión de 'double' a 'T'; posible pérdida de datos
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(271,21): warning C4244:         with
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(271,21): warning C4244:         [
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(271,21): warning C4244:             T=float
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(271,21): warning C4244:         ]
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(272,21): warning C4244: '=': conversión de 'double' a 'T'; posible pérdida de datos
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(272,21): warning C4244:         with
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(272,21): warning C4244:         [
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(272,21): warning C4244:             T=float
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(272,21): warning C4244:         ]
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(273,21): warning C4244: '=': conversión de 'double' a 'T'; posible pérdida de datos
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(273,21): warning C4244:         with
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(273,21): warning C4244:         [
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(273,21): warning C4244:             T=float
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(273,21): warning C4244:         ]
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(584,11): warning C4244: '=': conversión de 'double' a 'GLfloat'; posible pérdida de datos
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(585,11): warning C4244: '=': conversión de 'double' a 'GLfloat'; posible pérdida de datos
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(589,18): warning C4244: 'inicializando': conversión de 'double' a 'GLfloat'; posible pérdida de datos
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(590,18): warning C4244: 'inicializando': conversión de 'double' a 'GLfloat'; posible pérdida de datos
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(592,10): warning C4244: '=': conversión de 'double' a 'GLfloat'; posible pérdida de datos
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(593,10): warning C4244: '=': conversión de 'double' a 'GLfloat'; posible pérdida de datos
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(618,17): warning C4566: el carácter representado por el nombre de carácter universal '\uFFFD' no se puede representar en la página de códigos actual (1252)
-C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(638,16): warning C4566: el carácter representado por el nombre de carácter universal '\uFFFD' no se puede representar en la página de códigos actual (1252)
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(254,30): warning C4244: 'inicializando': conversión de 'double' a 'GLfloat'; posible pérdida de datos
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(280,27): warning C4244: '=': conversión de 'double' a 'T'; posible pérdida de datos
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(280,27): warning C4244:         with
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(280,27): warning C4244:         [
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(280,27): warning C4244:             T=float
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(280,27): warning C4244:         ]
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(281,27): warning C4244: '=': conversión de 'double' a 'T'; posible pérdida de datos
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(281,27): warning C4244:         with
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(281,27): warning C4244:         [
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(281,27): warning C4244:             T=float
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(281,27): warning C4244:         ]
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(282,27): warning C4244: '=': conversión de 'double' a 'T'; posible pérdida de datos
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(282,27): warning C4244:         with
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(282,27): warning C4244:         [
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(282,27): warning C4244:             T=float
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(282,27): warning C4244:         ]
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(656,11): warning C4244: '=': conversión de 'double' a 'GLfloat'; posible pérdida de datos
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(657,11): warning C4244: '=': conversión de 'double' a 'GLfloat'; posible pérdida de datos
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(661,18): warning C4244: 'inicializando': conversión de 'double' a 'GLfloat'; posible pérdida de datos
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(662,18): warning C4244: 'inicializando': conversión de 'double' a 'GLfloat'; posible pérdida de datos
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(664,10): warning C4244: '=': conversión de 'double' a 'GLfloat'; posible pérdida de datos
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(665,10): warning C4244: '=': conversión de 'double' a 'GLfloat'; posible pérdida de datos
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(690,17): warning C4566: el carácter representado por el nombre de carácter universal '\uFFFD' no se puede representar en la página de códigos actual (1252)
+C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\configInicial\Ajedrez.cpp(710,16): warning C4566: el carácter representado por el nombre de carácter universal '\uFFFD' no se puede representar en la página de códigos actual (1252)
+soil2-debug.lib(SOIL2.obj) : warning LNK4099: no se encontró PDB '' con 'soil2-debug.lib(SOIL2.obj)' o en ''; se vinculará el objeto sin tener en cuenta información de depuración
+soil2-debug.lib(image_DXT.obj) : warning LNK4099: no se encontró PDB '' con 'soil2-debug.lib(image_DXT.obj)' o en ''; se vinculará el objeto sin tener en cuenta información de depuración
+soil2-debug.lib(etc1_utils.obj) : warning LNK4099: no se encontró PDB '' con 'soil2-debug.lib(etc1_utils.obj)' o en ''; se vinculará el objeto sin tener en cuenta información de depuración
+soil2-debug.lib(image_helper.obj) : warning LNK4099: no se encontró PDB '' con 'soil2-debug.lib(image_helper.obj)' o en ''; se vinculará el objeto sin tener en cuenta información de depuración
+LINK : warning LNK4098: la biblioteca predeterminada'MSVCRT' entra en conflicto con otras bibliotecas; use la biblioteca /NODEFAULTLIB:biblioteca
   configInicial.vcxproj -> C:\Users\miguelrodriguez\Desktop\CGIH\Ajedrez\Debug\configInicial.exe
