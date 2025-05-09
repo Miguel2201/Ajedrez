@@ -1,4 +1,17 @@
-﻿#include <iostream>
+//****************************************************************************
+// Archivo: Ajedrez.cpp
+// Proyecto: Ajedrez 3D Interactivo con Temática Minecraft
+// Autores: Rodríguez Santana Miguel Angel, Valdes Trejo Rodrigo Alfredo
+// Fecha de Creación: 03 de marzo de 2025
+// Última Modificación: [08/05/2025]
+// Profesor: Ing. Edcel Fuerte Martínez
+// Asignatura: [Laboratorio de Computacion Grafica]
+// Este archivo contiene la implementación principal del juego de ajedrez 3D.
+// Incluye la inicialización de gráficos (OpenGL, GLFW), carga de modelos,
+// lógica del juego (tablero, piezas, movimientos), manejo de cámaras,
+// interacción con el usuario (ratón y teclado) y el bucle principal de renderizado.
+
+#include <iostream>
 #include <cmath>
 #include <vector>
 
@@ -28,22 +41,22 @@
 #include <vector>
 #include <map>
 
-// Tipos de Pieza
+// Tipos de Pieza de Ajedrez
 enum PieceType { EMPTY, PAWN, ROOK, KNIGHT, BISHOP, QUEEN, KING };
-// Colores de Pieza
-enum PieceColor { NONE, WHITE, BLACK };
+// Colores de Pieza de Ajedrez
+enum PieceColor { NONE, WHITE, BLACK }; // NONE se usa para casillas vacías o piezas capturadas
 
-// Estructura para representar una Pieza de Ajedrez
+// Estructura para representar una Pieza de Ajedrez en el tablero
 struct ChessPiece {
-    PieceType type = EMPTY;
-    PieceColor color = NONE;
-    Model* model = nullptr;
-    int row = -1;
-    int col = -1;
-    glm::vec3 positionOffset = glm::vec3(0.0f);
-    glm::vec3 scale = glm::vec3(1.0f);
-    float rotationY = 1.0f;
-    bool isSelected = false;
+    PieceType type = EMPTY;         // Tipo de la pieza (Peón, Torre, etc.)
+    PieceColor color = NONE;        // Color de la pieza (Blanco, Negro)
+    Model* model = nullptr;         // Puntero al modelo 3D que representa la pieza
+    int row = -1;                   // Fila actual de la pieza en el tablero (0-7)
+    int col = -1;                   // Columna actual de la pieza en el tablero (0-7)
+    glm::vec3 positionOffset = glm::vec3(0.0f); // Desplazamiento visual para ajustar el modelo
+    glm::vec3 scale = glm::vec3(1.0f);          // Escala del modelo
+    float rotationY = 0.0f;         // Rotación en el eje Y (en radianes) para orientar el modelo
+    bool isSelected = false;        // true si la pieza está actualmente seleccionada por el jugador
 
     // Para animación
     bool isMoving = false;
@@ -52,7 +65,7 @@ struct ChessPiece {
     float moveProgress = 0.0f;
     float moveSpeed = 0.2f; // Velocidad de la animación (ajustable)
 };
-
+// --- Variables Globales del Estado del Juego ---
 // Representación del tablero (8x8)
 ChessPiece board[8][8];
 
@@ -60,17 +73,17 @@ ChessPiece board[8][8];
 std::vector<ChessPiece> whiteCapturedPieces;
 std::vector<ChessPiece> blackCapturedPieces;
 
-// Variables para manejar la selección y movimiento
-ChessPiece* selectedPiece = nullptr;
-int selectedRow = -1;
-int selectedCol = -1;
-PieceColor currentPlayer = WHITE;
+// Variables para gestionar la selección y el movimiento actual
+ChessPiece* selectedPiece = nullptr; // Puntero a la pieza actualmente seleccionada
+int selectedRow = -1;                // Fila de la pieza seleccionada
+int selectedCol = -1;                // Columna de la pieza seleccionada
+PieceColor currentPlayer = WHITE;    // Jugador cuyo turno es actualmente
 
-// Dimensiones y posición del tablero
-const float TILE_SIZE = 5.0f;
-const float BOARD_OFFSET_X = -20.25f;
-const float BOARD_OFFSET_Z = 1.0f;
-const float PIECE_Y_OFFSET = -2.0f;
+// --- Constantes de Configuración del Tablero y Escena ---
+const float TILE_SIZE = 5.0f;         // Tamaño de una casilla del tablero en unidades del mundo
+const float BOARD_OFFSET_X = -20.25f; // Desplazamiento X para posicionar el tablero en el mundo
+const float BOARD_OFFSET_Z = 1.0f;    // Desplazamiento Z para posicionar el tablero en el mundo
+const float PIECE_Y_OFFSET = -2.0f;   // Altura (Y) base a la que se colocan las piezas
 
 // Posiciones para piezas capturadas
 const float CAPTURED_WHITE_X = BOARD_OFFSET_X - TILE_SIZE * 2.0f;
@@ -87,12 +100,12 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
 void MouseCallback(GLFWwindow* window, double xPos, double yPos);
 void DoMovement();
 void UpdateAnimations(float deltaTime);
-void InitializeBoard(
+void InitializeBoard( 
     Model* pPeonW, Model* pTorreW, Model* pCaballoW, Model* pAlfilW, Model* pReinaW, Model* pReyW,
     Model* pPeonB, Model* pTorreB, Model* pCaballoB, Model* pAlfilB, Model* pReinaB, Model* pReyB
-);
-glm::vec3 GetWorldCoordinates(int row, int col);
-bool IsPathClear(int startRow, int startCol, int endRow, int endCol);
+);//Configura las piezas en sus posiciones iniciales en el tablero.
+glm::vec3 GetWorldCoordinates(int row, int col); // Convierte coordenadas de tablero (fila, col) a coordenadas del mundo (x, y, z).
+bool IsPathClear(int startRow, int startCol, int endRow, int endCol); // Verifica si no hay obstáculos entre dos casillas para movimientos rectilíneos.
 bool IsValidMove(ChessPiece* piece, int targetRow, int targetCol);
 bool WorldToBoardCoordinates(const glm::vec3& worldPos, int& row, int& col);
 glm::vec3 CalculateMouseRay(GLFWwindow* window, double xpos, double ypos, const Camera& cam, const glm::mat4& projectionMatrix);
@@ -181,7 +194,7 @@ int main()
     Model blaze((char*)"Models/Minecraft/blaze.obj");
     Model enderman((char*)"Models/Minecraft/enderman.obj");
     Model esqueleto((char*)"Models/Minecraft/esqueleto.obj");
-
+     // Coloca las piezas en sus posiciones iniciales y les asigna sus modelos
     InitializeBoard(
         &pollo, &golem, &caballo, &perro, &alex, &steve,
         &esqueleto, &piglin, &blaze, &enderman, &dragon, &warden
@@ -312,11 +325,7 @@ void UpdateAnimations(float deltaTime) {
         for (int c = 0; c < 8; ++c) {
             ChessPiece& piece = board[r][c];
             if (piece.isMoving) {
-                // Guardar el offset Y estático original ANTES de calcular nada más.
-                // Hacemos esto solo una vez al inicio de la animación,
-                // pero como sobrescribimos X y Z, podemos simplemente leerlo cada vez.
                 float staticOffsetY = piece.positionOffset.y; // Guarda el Y actual (debería ser el estático)
-
                 piece.moveProgress += piece.moveSpeed * deltaTime;
 
                 if (piece.moveProgress >= 1.0f) {
@@ -327,7 +336,6 @@ void UpdateAnimations(float deltaTime) {
                     piece.positionOffset.x = 0.0f;
                     piece.positionOffset.z = 0.0f;
 
-   
                 }
                 else {
                     // Interpolación lineal entre startPos y targetPos
@@ -361,21 +369,35 @@ void MoveCapturedPiece(ChessPiece& piece) {
     piece.color = NONE;
     piece.model = nullptr;
 }
-
+/**
+ * @brief Callback para eventos de clic del ratón.
+ * Gestiona la selección de piezas, validación de movimientos y ejecución de movimientos/capturas.
+ * @param window Puntero a la ventana GLFW.
+ * @param button Botón del ratón presionado.
+ * @param action Acción (GLFW_PRESS o GLFW_RELEASE).
+ * @param mods Modificadores de teclado (Shift, Ctrl, etc.).
+ */
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-        double xpos, ypos;
+        double xpos, ypos; // Obtener posición actual del cursor
         glfwGetCursorPos(window, &xpos, &ypos);
+	// Determinar qué cámara se está usando para el raycasting
+        const Camera& currentActiveCamera = useSideCamera ? cameraSideView : camera;
         glm::vec3 intersectionPoint = GetBoardIntersectionPoint(window, xpos, ypos, camera);
         
-
+        // Verificar si la intersección es válida (GetBoardIntersectionPoint devuelve -999.0f en Y si no)
         if (intersectionPoint.y > -900.0f) {
             int targetRow, targetCol;
             if (WorldToBoardCoordinates(intersectionPoint, targetRow, targetCol)) {
                 std::cout << "Clicked on board at: (" << targetRow << "," << targetCol << ")" << std::endl;
                 ChessPiece& clickedPiece = board[targetRow][targetCol];
-
-                if (selectedPiece == nullptr) {
+                 // ... Lógica de selección y movimiento ...
+                // Caso 1: Ninguna pieza está seleccionada actualmente.
+                // Caso 2: Ya hay una pieza seleccionada. Evaluar movimiento.
+                         // Subcaso 2.1: El movimiento es válido.
+                        // Subcaso 2.2: El movimiento no es válido. ¿Se seleccionó otra pieza propia?
+                if (selectedPiece == nullptr) { // Si no hay ninguna pieza seleccionada
+                    // Intentar seleccionar la pieza en la casilla clickeada
                     if (clickedPiece.type != EMPTY && clickedPiece.color == currentPlayer) {
                         clickedPiece.isSelected = true;
                         selectedPiece = &clickedPiece;
@@ -385,17 +407,16 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
                 }
                 else {
                     // Dentro del if (IsValidMove(...)) en MouseButtonCallback:
-
+                    // Ya hay una pieza seleccionada, intentar moverla o cambiar selección
                     if (IsValidMove(selectedPiece, targetRow, targetCol)) {
                         selectedPiece->isSelected = false;
                         ChessPiece& targetSquare = board[targetRow][targetCol];
-
-                        // Captura de pieza (si aplica)
+                        // Si hay una pieza enemiga en la casilla destino, capturarla
                         if (targetSquare.type != EMPTY) {
                             MoveCapturedPiece(targetSquare); // Mueve la pieza *antes* de sobrescribirla
                         }
 
-                        // 1. Copia la pieza a la nueva posición LÓGICA primero
+                        // 1. Mover la pieza seleccionada a la casilla destino
                         ChessPiece pieceToMove = *selectedPiece; // Crea una copia temporal
                         pieceToMove.row = targetRow;
                         pieceToMove.col = targetCol;
@@ -423,10 +444,11 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
                         selectedCol = -1;
 
                         // CAMBIO DE TURNO (ver siguiente punto)
-                        currentPlayer = (currentPlayer == WHITE) ? BLACK : WHITE; // <-- DESCOMENTAR ESTA LÍNEA AQUÍ
+                        currentPlayer = (currentPlayer == WHITE) ? BLACK : WHITE; 
                     }
-              
-                    else {
+                   // Limpiar el estado de selección
+                    else {// El movimiento no es válido
+                        // Si se hizo clic en otra pieza del mismo jugador, cambiar la selección
                         if (board[targetRow][targetCol].type != EMPTY &&
                             board[targetRow][targetCol].color == currentPlayer) {
                             selectedPiece->isSelected = false;
@@ -435,7 +457,8 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
                             selectedRow = targetRow;
                             selectedCol = targetCol;
                         }
-                        else {
+                        else {  // Clic en casilla enemiga (no válida para mover) o vacía (no válida para mover)
+                            selectedPiece->isSelected = false; // Deseleccionar la pieza actual
                             selectedPiece->isSelected = false;
                             selectedPiece = nullptr;
                             selectedRow = -1;
@@ -488,6 +511,14 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
 		}
 	}
 }
+
+/**
+ * @brief Callback para movimiento del cursor del ratón.
+ * Controla la orientación de la cámara principal.
+ * @param window Puntero a la ventana GLFW.
+ * @param xPos Nueva posición X del cursor.
+ * @param yPos Nueva posición Y del cursor.
+ */
 void MouseCallback(GLFWwindow* window, double xPos, double yPos)
 {
 	if (firstMouse)
@@ -507,7 +538,7 @@ void MouseCallback(GLFWwindow* window, double xPos, double yPos)
 }
 
 
-// --- Anadido: Funci�n auxiliar para verificar caminos ---
+// --- Anadido: Funcion auxiliar para verificar caminos ---
 // Verifica si el camino entre (startRow, startCol) y (endRow, endCol) esta vacio.
 // NO verifica la validez del movimiento en si (horizontal, vertical, diagonal)
 // Asume que el movimiento es en linea recta (horizontal, vertical o diagonal perfecta).
@@ -542,15 +573,15 @@ bool IsPathClear(int startRow, int startCol, int endRow, int endCol) {
 }
 
 
-// --- ACTUALIZADA: Validaci�n de Movimientos de Ajedrez (Reglas B�sicas) ---
+// --- ACTUALIZADA: Validacion de Movimientos de Ajedrez (Reglas B�sicas) ---
 bool IsValidMove(ChessPiece* piece, int targetRow, int targetCol) {
-	// 1. Chequeos Iniciales B�sicos
+	// 1. Chequeos Iniciales Basicos
 	if (!piece || piece->type == EMPTY) {
 		std::cerr << "Error IsValidMove: Pieza inv�lida o vac�a." << std::endl;
 		return false;
 	}
 	if (targetRow < 0 || targetRow >= 8 || targetCol < 0 || targetCol >= 8) {
-		// std::cout << "Movimiento inv�lido: Fuera del tablero." << std::endl; // Mucho spam
+		// std::cout << "Movimiento invalido: Fuera del tablero." << std::endl; // Mucho spam
 		return false; // Fuera del tablero
 	}
 
@@ -565,22 +596,22 @@ bool IsValidMove(ChessPiece* piece, int targetRow, int targetCol) {
 
 	// No puedes capturar una pieza de tu propio color
 	if (targetSquare.type != EMPTY && targetSquare.color == piece->color) {
-		// std::cout << "Movimiento inv�lido: No puedes capturar tu propia pieza." << std::endl;
+		// std::cout << "Movimiento invalido: No puedes capturar tu propia pieza." << std::endl;
 		return false;
 	}
 
 	// 2. Logica Especifica por Tipo de Pieza
 	switch (piece->type) {
 	case PAWN: {
-		int forward = (piece->color == WHITE) ? 1 : -1; // Direcci�n de avance
+		int forward = (piece->color == WHITE) ? 1 : -1; // Direccion de avance
 		// Mover 1 casilla adelante
 		if (targetCol == startCol && targetRow == startRow + forward && targetSquare.type == EMPTY) {
 			return true;
 		}
-		// Mover 2 casillas adelante (solo desde posici�n inicial)
+		// Mover 2 casillas adelante (solo desde posicion inicial)
 		bool isStartingRow = (piece->color == WHITE && startRow == 1) || (piece->color == BLACK && startRow == 6);
 		if (isStartingRow && targetCol == startCol && targetRow == startRow + 2 * forward && targetSquare.type == EMPTY) {
-			// Verificar que la casilla intermedia tambi�n est� vac�a
+			// Verificar que la casilla intermedia tambien esta vacia
 			if (board[startRow + forward][startCol].type == EMPTY) {
 				return true;
 			}
@@ -589,8 +620,8 @@ bool IsValidMove(ChessPiece* piece, int targetRow, int targetCol) {
 		if (std::abs(targetCol - startCol) == 1 && targetRow == startRow + forward && targetSquare.type != EMPTY && targetSquare.color != piece->color) {
 			return true;
 		}
-		// Faltan: En Passant, Promoci�n
-		return false; // Si no es ninguno de los anteriores, es inv�lido para el pe�n
+		// Faltan: En Passant, Promocion
+		return false; // Si no es ninguno de los anteriores, es invalido para el peon
 	}
 
 	case ROOK: {
@@ -598,14 +629,14 @@ bool IsValidMove(ChessPiece* piece, int targetRow, int targetCol) {
 		if (startRow != targetRow && startCol != targetCol) {
 			return false; // No es movimiento de torre
 		}
-		// Verificar que el camino est� despejado
+		// Verificar que el camino esta despejado
 		return IsPathClear(startRow, startCol, targetRow, targetCol);
 	}
 
 	case KNIGHT: {
 		int dRow = std::abs(targetRow - startRow);
 		int dCol = std::abs(targetCol - startCol);
-		// Movimiento en 'L' (2 en una direcci�n, 1 en la perpendicular)
+		// Movimiento en 'L' (2 en una direccion, 1 en la perpendicular)
 		return (dRow == 2 && dCol == 1) || (dRow == 1 && dCol == 2);
 		// El caballo salta, no necesita IsPathClear
 	}
@@ -615,7 +646,7 @@ bool IsValidMove(ChessPiece* piece, int targetRow, int targetCol) {
 		if (std::abs(targetRow - startRow) != std::abs(targetCol - startCol)) {
 			return false; // No es movimiento de alfil
 		}
-		// Verificar que el camino est� despejado
+		// Verificar que el camino esta despejado
 		return IsPathClear(startRow, startCol, targetRow, targetCol);
 	}
 
@@ -626,14 +657,14 @@ bool IsValidMove(ChessPiece* piece, int targetRow, int targetCol) {
 		if (!isStraight && !isDiagonal) {
 			return false; // No es movimiento de reina
 		}
-		// Verificar que el camino est� despejado
+		// Verificar que el camino esta despejado
 		return IsPathClear(startRow, startCol, targetRow, targetCol);
 	}
 
 	case KING: {
 		int dRow = std::abs(targetRow - startRow);
 		int dCol = std::abs(targetCol - startCol);
-		// Mover solo 1 casilla en cualquier direcci�n
+		// Mover solo 1 casilla en cualquier direccion
 		// Faltan: Enroque, Chequeo de Jaque
 		return dRow <= 1 && dCol <= 1;
 	}
@@ -644,11 +675,10 @@ bool IsValidMove(ChessPiece* piece, int targetRow, int targetCol) {
 		return false;
 	}
 }
-// --- Fin de ACTUALIZADA ---
 
 
-// Funci�n para intentar convertir coordenadas del mundo a tablero (�SIMPLIFICADA!)
-// Asume que el eje Y es la altura y que el tablero est� en el plano XZ
+// Funcion para intentar convertir coordenadas del mundo a tablero
+// Asume que el eje Y es la altura y que el tablero este en el plano XZ
 bool WorldToBoardCoordinates(const glm::vec3& worldPos, int& row, int& col) {
 	// Calcula columna basada en X
 	float boardX = worldPos.x - BOARD_OFFSET_X;
@@ -658,7 +688,7 @@ bool WorldToBoardCoordinates(const glm::vec3& worldPos, int& row, int& col) {
 	float boardZ = worldPos.z - BOARD_OFFSET_Z;
 	row = static_cast<int>(floor(boardZ / TILE_SIZE));
 
-	// Verifica si est� dentro de los l�mites del tablero
+	// Verifica si esta dentro de los limites del tablero
 	if (row >= 0 && row < 8 && col >= 0 && col < 8) {
 		return true;
 	}
@@ -671,7 +701,7 @@ bool WorldToBoardCoordinates(const glm::vec3& worldPos, int& row, int& col) {
 
 // --- Anadido: Funciones de Raycasting ---
 
-// Calcula la direcci�n del rayo en coordenadas del MUNDO desde la posici�n del mouse
+// Calcula la direccion del rayo en coordenadas del MUNDO desde la posici�n del mouse
 glm::vec3 CalculateMouseRay(GLFWwindow* window, double xpos, double ypos, const Camera& cam, const glm::mat4& projectionMatrix) {
 	// 1. Coordenadas Normalizadas del Dispositivo (NDC)
 	// Convierte las coordenadas de pantalla (0 a Width, 0 a Height) a (-1 a 1, -1 a 1)
